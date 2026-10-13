@@ -11,7 +11,7 @@ Decisions from the design brainstorm. Terms follow [GLOSSARY.md](../GLOSSARY.md)
 | Amount | Optional number above 0, up to 2 decimals | Number plus a unit chosen from a list (pcs, kg, g, l, pack) | |
 | Item names | Typed in full | Autocomplete | |
 | Categories | | | Items grouped by Category |
-| Connectivity | Online only | Offline use (to plan) | |
+| Connectivity | Offline only: data stays on the device | Online only | Offline and online, with sync |
 | Language | English only | | User picks a language and it is saved; auto-detected on first open |
 
 ## V1 decisions
@@ -26,7 +26,7 @@ Decisions from the design brainstorm. Terms follow [GLOSSARY.md](../GLOSSARY.md)
 - Items and Shopping Lists can be renamed and deleted. Deleting a Shopping List asks for confirmation. Deleting an Item is immediate, with a short Undo toast.
 - New Items are added at the bottom of the To-buy section. No manual reordering.
 - Duplicate Items are allowed.
-- The app needs a connection; no offline editing.
+- The app works offline only; Shopping Lists are stored on the device.
 - Two screens: **Lists** (each Shopping List with its count of Items left to buy, most recently changed first) and **List** (To-buy on top, Bought below). No settings screen.
 - Tapping an Item's checkbox toggles Bought; tapping its name opens an edit view (name, Amount, delete).
 - A new User sees an empty Lists screen with a "Create your first list" button.
