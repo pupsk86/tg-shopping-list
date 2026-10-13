@@ -32,6 +32,8 @@ Decisions from the design brainstorm. Terms follow [GLOSSARY.md](../GLOSSARY.md)
 - A new User sees an empty Lists screen with a "Create your first list" button.
 - The app follows the User's Telegram theme (light or dark) and uses Telegram's own buttons where it can.
 - The Allowlist is a config value holding Telegram IDs. No admin screen.
+- The bot only opens the mini app. Adding Items by chat message and notifications are out of scope.
+- The interface is English only.
 
 ## To prototype
 
@@ -40,8 +42,6 @@ Decided by trying, not on paper, when the task that builds it comes up. Any othe
 - How adding an Item works on the List screen.
 - What the Item edit view looks like.
 - How the Telegram theme looks applied to both screens.
-- The bot only opens the mini app. Adding Items by chat message and notifications are out of scope.
-- The interface is English only.
 
 ## Backlog
 
