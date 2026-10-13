@@ -25,7 +25,7 @@ One thing to buy on a Shopping List, identified by its name.
 _Avoid_: Product, entry, line
 
 **Amount**:
-An optional number saying how much of an Item to buy. From V2 it also carries a unit chosen from a fixed list, such as kg or pack.
+An optional number saying how much of an Item to buy; decimals allowed. From V2 it also carries a unit chosen from a fixed list, such as kg or pack.
 _Avoid_: Count, qty
 
 **Bought**:
