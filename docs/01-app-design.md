@@ -57,3 +57,8 @@ Ideas agreed as worth doing, with no release assigned yet.
 - Format the Amount field by the User's locale.
 - Decide how to handle Shopping Lists with the same name.
 - Templates: save a Shopping List as a template and create a Shopping List from one, with its own Templates screen.
+- Prices for Items, with a total for each Shopping List.
+- Fill in the Amount's unit automatically from the Item name.
+- Include the User's own past Item names in autocomplete.
+- Filter offensive Shopping List and Item names.
+- Rate limiting on the API and other anti-spam measures.
