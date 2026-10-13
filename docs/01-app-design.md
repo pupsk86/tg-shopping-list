@@ -10,6 +10,7 @@ Decisions from the design brainstorm. Terms follow [GLOSSARY.md](../GLOSSARY.md)
 | Sharing | None: only the Author can edit a Shopping List | | Shared Shopping Lists |
 | Amount | Optional number above 0, up to 2 decimals | Number plus a unit chosen from a list (pcs, kg, g, l, pack) | |
 | Item names | Typed in full | Autocomplete | |
+| Limits | None | Max Shopping Lists per User, max Items per Shopping List (numbers to be set) | |
 | Categories | | | Items grouped by Category |
 | Connectivity | Offline only: data stays on the device | Offline and online, synced through a server | |
 | Language | English only | | User picks a language and it is saved; auto-detected on first open |
@@ -37,6 +38,7 @@ Decisions from the design brainstorm. Terms follow [GLOSSARY.md](../GLOSSARY.md)
 ## V2 decisions
 
 - On first open, the app uploads each User's existing V1 Shopping Lists to the server, so nothing is lost.
+- Each User has a maximum number of Shopping Lists, and each Shopping List a maximum number of Items. The exact limits are still to be set.
 
 ## To prototype
 
