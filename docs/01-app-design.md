@@ -64,3 +64,4 @@ Ideas agreed as worth doing, with no release assigned yet.
 - Include the User's own past Item names in autocomplete.
 - Filter offensive Shopping List and Item names.
 - Rate limiting on the API and other anti-spam measures.
+- Export a Shopping List as text (such as Markdown) and share it, for example to a Telegram chat or another messenger.
