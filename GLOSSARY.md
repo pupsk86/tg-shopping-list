@@ -15,9 +15,6 @@ _Avoid_: Cart, basket, note
 **Author**:
 The User who created a Shopping List. In V1, the only User who can see or change it.
 
-**Allowlist**:
-The Telegram accounts allowed to use the app in V1. Anyone else sees a "private app" message.
-_Avoid_: Whitelist, members
 _Avoid_: Creator, admin
 
 **Item**:

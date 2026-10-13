@@ -6,17 +6,17 @@ Decisions from the design brainstorm. Terms follow [GLOSSARY.md](../GLOSSARY.md)
 
 | | V1 (MVP) | V2 | V3 |
 | --- | --- | --- | --- |
-| Audience | Kosta's family, via an Allowlist | Public | Public |
+| Audience | Kosta's family | Public | Public |
 | Sharing | None: only the Author can edit a Shopping List | | Shared Shopping Lists |
 | Amount | Optional number above 0, up to 2 decimals | Number plus a unit chosen from a list (pcs, kg, g, l, pack) | |
 | Item names | Typed in full | Autocomplete | |
 | Categories | | | Items grouped by Category |
-| Connectivity | Offline only: data stays on the device | Online only | Offline and online, with sync |
+| Connectivity | Offline only: data stays on the device | Offline and online, synced through a server | |
 | Language | English only | | User picks a language and it is saved; auto-detected on first open |
 
 ## V1 decisions
 
-- Only Users on the Allowlist get in. Each one has their own private Shopping Lists; nobody sees anyone else's.
+- Anyone who opens the app gets in; there is no access check. Each User has their own private Shopping Lists; nobody sees anyone else's.
 - A User can have several named Shopping Lists. No folders.
 - An Item has a name, an optional Amount and a Bought checkmark. No prices, photos or categories.
 - An Amount is a number above 0 with up to 2 decimals, typed with a comma or a dot.
@@ -26,14 +26,17 @@ Decisions from the design brainstorm. Terms follow [GLOSSARY.md](../GLOSSARY.md)
 - Items and Shopping Lists can be renamed and deleted. Deleting a Shopping List asks for confirmation. Deleting an Item is immediate, with a short Undo toast.
 - New Items are added at the bottom of the To-buy section. No manual reordering.
 - Duplicate Items are allowed.
-- The app works offline only; Shopping Lists are stored on the device.
+- The app works offline only. Shopping Lists are stored on the device, so a User's phone and laptop do not share them.
 - Two screens: **Lists** (each Shopping List with its count of Items left to buy, most recently changed first) and **List** (To-buy on top, Bought below). No settings screen.
 - Tapping an Item's checkbox toggles Bought; tapping its name opens an edit view (name, Amount, delete).
 - A new User sees an empty Lists screen with a "Create your first list" button.
 - The app follows the User's Telegram theme (light or dark) and uses Telegram's own buttons where it can.
-- The Allowlist is a config value holding Telegram IDs. No admin screen.
 - The bot only opens the mini app. Adding Items by chat message and notifications are out of scope.
 - The interface is English only.
+
+## V2 decisions
+
+- On first open, the app uploads each User's existing V1 Shopping Lists to the server, so nothing is lost.
 
 ## To prototype
 
