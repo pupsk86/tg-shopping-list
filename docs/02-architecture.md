@@ -49,6 +49,7 @@ The web app has three layers. Screens read and change Shopping Lists only throug
 - Deleting a Shopping List also sets the "deleted" mark on each of its Items, with the same "last changed" time, so V2 sync spreads the delete to every record.
 - Names are trimmed of spaces, tabs and line breaks only, and their length is counted in Unicode code points, so the Java server can apply exactly the same rule (`strip()`, `codePointCount`).
 - Telegram for iOS (9.6) saves to DeviceStorage but never sends the "saved" confirmation. So the app sends a save without waiting for its answer and reads the key straight back: Telegram handles requests in order, so the read answers once the save is done, and a different value means the save failed. Reads give up after 5 seconds.
+- Telegram Web offers DeviceStorage calls but answers each with UNSUPPORTED. When DeviceStorage answers UNSUPPORTED, the app switches to the browser's own storage for the rest of the session. Telegram Web runs in a normal browser tab, which doesn't wipe storage the way the iOS web view does (ADR 0001). Lists made in Telegram Web stay in that browser and are not shared with the phone.
 - The store applies changes one at a time, each on top of the last saved data, and changes its state only after the save succeeds.
 - In development outside Telegram, the Main and Back buttons are drawn in the page, since Telegram's own buttons don't exist there.
 - Browser end-to-end tests wait until after the MVP. Unit tests cover the domain rules and storage most of all.
