@@ -1,17 +1,11 @@
 import { useState } from 'react';
 import { useStore } from 'zustand';
-import { StorageCheck } from './debug/StorageCheck';
 import { EditListScreen } from './screens/EditListScreen';
 import { ListsScreen } from './screens/ListsScreen';
 import { NewListScreen } from './screens/NewListScreen';
 import type { ShoppingStore } from './store/store';
 
-type Screen =
-  | { name: 'lists' }
-  | { name: 'newList' }
-  | { name: 'editList'; listId: string }
-  /** TEMPORARY: storage check. */
-  | { name: 'debug' };
+type Screen = { name: 'lists' } | { name: 'newList' } | { name: 'editList'; listId: string };
 
 export function App({ store }: { store: ShoppingStore }) {
   const status = useStore(store, (state) => state.status);
@@ -55,16 +49,11 @@ function ReadyApp({ store, screen, setScreen }: ReadyProps) {
           onEdit={(listId) => {
             setScreen({ name: 'editList', listId });
           }}
-          onDebug={() => {
-            setScreen({ name: 'debug' });
-          }}
         />
       );
     case 'newList':
       return <NewListScreen store={store} onDone={toLists} />;
     case 'editList':
       return <EditListScreen store={store} listId={screen.listId} onDone={toLists} />;
-    case 'debug':
-      return <StorageCheck onDone={toLists} />;
   }
 }
