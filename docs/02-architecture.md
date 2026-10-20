@@ -25,7 +25,7 @@ The web app has three layers. Screens read and change Shopping Lists only throug
 
 | Area | V1 choice |
 | --- | --- |
-| Language | TypeScript, strict mode |
+| Language | TypeScript 6, strict mode (typescript-eslint does not support TypeScript 7 yet) |
 | UI | React, bundled by Vite |
 | Telegram SDK | `@tma.js/sdk-react` (the successor of `@telegram-apps/sdk-react`) |
 | Components | Telegram's own Main and Back buttons via the SDK, plus our own small components styled with Telegram's theme colours |
