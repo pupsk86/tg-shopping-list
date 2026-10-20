@@ -6,9 +6,10 @@ import { MainButton } from '../telegram/buttons';
 interface Props {
   store: ShoppingStore;
   onCreate: () => void;
+  onEdit: (listId: string) => void;
 }
 
-export function ListsScreen({ store, onCreate }: Props) {
+export function ListsScreen({ store, onCreate, onEdit }: Props) {
   const data = useStore(store, (state) => state.data);
   const lists = useMemo(() => listSummaries(data), [data]);
 
@@ -31,6 +32,16 @@ export function ListsScreen({ store, onCreate }: Props) {
             <span className="hint" aria-label={`${String(list.leftToBuy)} left to buy`}>
               {list.leftToBuy}
             </span>
+            <button
+              type="button"
+              className="link"
+              aria-label={`Rename or delete ${list.name}`}
+              onClick={() => {
+                onEdit(list.id);
+              }}
+            >
+              Edit
+            </button>
           </li>
         ))}
       </ul>
