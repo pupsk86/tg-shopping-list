@@ -6,3 +6,7 @@ V1 has no server, so Shopping Lists live on the device. We store them in Telegra
 
 - **Browser storage (localStorage or IndexedDB)**: no size worries, but the web view may clear it, and a User would silently lose their Shopping Lists. Used only as the stand-in during development outside Telegram.
 - **Telegram CloudStorage**: would sync a User's phone and laptop for free, but is capped at 1024 keys of 4 KB each and contradicts the step 1 decision that devices do not share Shopping Lists in V1. Real sync comes with the V2 server instead.
+
+## Amendment: Telegram Web
+
+Telegram Web has no DeviceStorage (every call answers UNSUPPORTED). There the app uses the browser's own storage instead. The wiping risk above is about the iOS web view; a normal browser tab keeps its storage unless the User clears it.
