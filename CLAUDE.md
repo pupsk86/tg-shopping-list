@@ -20,7 +20,7 @@ Matt Pocock's skills are in `.claude/skills/` (see its README).
 
 ### Issue tracker
 
-GitHub Issues in this repo, grouped by milestone. See `docs/agents/issue-tracker.md`.
+GitHub Issues in this repo, grouped under one parent issue per spec. See `docs/agents/issue-tracker.md`.
 
 ### Domain docs
 

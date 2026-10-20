@@ -1,6 +1,6 @@
 # Step 4: V1 MVP milestone
 
-The plan for the first milestone, written as a spec. Terms follow [GLOSSARY.md](../GLOSSARY.md). Product decisions are in [01-app-design.md](01-app-design.md) and technical ones in [02-architecture.md](02-architecture.md) and [docs/adr/](adr/); this file does not repeat them, it says what the milestone delivers and how we know it is done. Step 5 splits it into GitHub Issues under the **V1 MVP** milestone.
+The plan for the first milestone, written as a spec. Terms follow [GLOSSARY.md](../GLOSSARY.md). Product decisions are in [01-app-design.md](01-app-design.md) and technical ones in [02-architecture.md](02-architecture.md) and [docs/adr/](adr/); this file does not repeat them, it says what the milestone delivers and how we know it is done. Step 5 split it into GitHub Issues: sub-issues of [#5 V1 MVP](https://github.com/pupsk86/tg-shopping-list/issues/5).
 
 ## Problem Statement
 
