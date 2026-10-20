@@ -6,11 +6,9 @@ import { MainButton } from '../telegram/buttons';
 interface Props {
   store: ShoppingStore;
   onCreate: () => void;
-  /** TEMPORARY: opens the storage check. */
-  onDebug: () => void;
 }
 
-export function ListsScreen({ store, onCreate, onDebug }: Props) {
+export function ListsScreen({ store, onCreate }: Props) {
   const data = useStore(store, (state) => state.data);
   const lists = useMemo(() => listSummaries(data), [data]);
 
@@ -19,9 +17,6 @@ export function ListsScreen({ store, onCreate, onDebug }: Props) {
       <main className="screen empty">
         <p className="hint">You have no shopping lists yet.</p>
         <MainButton text="Create your first list" onClick={onCreate} />
-        <button type="button" className="debug-link" onClick={onDebug}>
-          Storage check
-        </button>
       </main>
     );
   }
@@ -40,9 +35,6 @@ export function ListsScreen({ store, onCreate, onDebug }: Props) {
         ))}
       </ul>
       <MainButton text="New list" onClick={onCreate} />
-      <button type="button" className="debug-link" onClick={onDebug}>
-        Storage check
-      </button>
     </main>
   );
 }
