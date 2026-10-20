@@ -17,6 +17,9 @@ export interface ShoppingState {
   load(): Promise<void>;
   /** Saves before it changes state, so the screens never show a Shopping List that wasn't saved. */
   createList(name: string): Promise<{ ok: true; id: string } | { ok: false; error: NameError }>;
+  renameList(id: string, name: string): Promise<{ ok: true } | { ok: false; error: NameError }>;
+  /** Sets the "deleted" mark on the Shopping List and its Items; nothing is erased (ADR 0002). */
+  deleteList(id: string): Promise<void>;
 }
 
 export type ShoppingStore = StoreApi<ShoppingState>;
@@ -77,8 +80,46 @@ export function createShoppingStore({
         await commit((data) => ({ ...data, lists: [...data.lists, list] }));
         return { ok: true, id: list.id };
       },
+
+      async renameList(id, rawName) {
+        const name = parseName(rawName);
+        if (!name.ok) return name;
+        await commit((data) => {
+          liveList(data, id);
+          const changedAt = now();
+          return {
+            ...data,
+            lists: data.lists.map((list) =>
+              list.id === id ? { ...list, name: name.value, changedAt } : list,
+            ),
+          };
+        });
+        return { ok: true };
+      },
+
+      async deleteList(id) {
+        await commit((data) => {
+          liveList(data, id);
+          const changedAt = now();
+          return {
+            lists: data.lists.map((list) =>
+              list.id === id ? { ...list, deleted: true, changedAt } : list,
+            ),
+            items: data.items.map((item) =>
+              item.listId === id && !item.deleted ? { ...item, deleted: true, changedAt } : item,
+            ),
+          };
+        });
+      },
     };
   });
+}
+
+/** The Shopping List with this id, which must exist and not be deleted. */
+function liveList(data: ShoppingData, id: string): ShoppingListRecord {
+  const list = data.lists.find((candidate) => candidate.id === id && !candidate.deleted);
+  if (!list) throw new Error(`No Shopping List ${id}`);
+  return list;
 }
 
 export interface ListSummary {

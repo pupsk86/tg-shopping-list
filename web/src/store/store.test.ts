@@ -140,3 +140,112 @@ describe('saved data the app cannot use', () => {
     expect(await backend.get('data')).toBe('{broken');
   });
 });
+
+describe('renaming a Shopping List', () => {
+  it('shows the new name and moves the Shopping List to the top', async () => {
+    const store = await openApp();
+    await store.getState().createList('Groceries');
+    clock = 2000;
+    await store.getState().createList('Hardware store');
+    clock = 3000;
+
+    const result = await store.getState().renameList('id-1', '  Weekly groceries ');
+
+    expect(result).toEqual({ ok: true });
+    expect(shownLists(store).map((list) => list.name)).toEqual([
+      'Weekly groceries',
+      'Hardware store',
+    ]);
+    expect(store.getState().data.lists[0]?.changedAt).toBe(3000);
+  });
+
+  it('rejects an empty or too long name and keeps the old one', async () => {
+    const store = await openApp();
+    await store.getState().createList('Groceries');
+
+    expect(await store.getState().renameList('id-1', ' ')).toEqual({ ok: false, error: 'empty' });
+    expect(await store.getState().renameList('id-1', 'a'.repeat(101))).toEqual({
+      ok: false,
+      error: 'tooLong',
+    });
+    expect(shownLists(await openApp())[0]?.name).toBe('Groceries');
+  });
+
+  it('keeps the new name after the app is opened again', async () => {
+    const store = await openApp();
+    await store.getState().createList('Groceries');
+    await store.getState().renameList('id-1', 'Market');
+
+    expect(shownLists(await openApp())[0]?.name).toBe('Market');
+  });
+});
+
+describe('deleting a Shopping List', () => {
+  it('hides it and keeps the others', async () => {
+    const store = await openApp();
+    await store.getState().createList('Groceries');
+    clock = 2000;
+    await store.getState().createList('Hardware store');
+
+    await store.getState().deleteList('id-1');
+
+    expect(shownLists(store).map((list) => list.name)).toEqual(['Hardware store']);
+  });
+
+  it('stays hidden after the app is opened again', async () => {
+    const store = await openApp();
+    await store.getState().createList('Groceries');
+    await store.getState().deleteList('id-1');
+
+    expect(shownLists(await openApp())).toEqual([]);
+  });
+
+  it('keeps the record with its deleted mark and the time of the delete (ADR 0002)', async () => {
+    const store = await openApp();
+    await store.getState().createList('Groceries');
+    clock = 5000;
+    await store.getState().deleteList('id-1');
+
+    expect((await openApp()).getState().data.lists).toEqual([
+      { id: 'id-1', name: 'Groceries', changedAt: 5000, deleted: true },
+    ]);
+  });
+
+  it('marks its Items deleted too', async () => {
+    const list = { id: 'list-1', name: 'Groceries', changedAt: 1000, deleted: false };
+    const item = (id: string, listId: string) => ({
+      id,
+      listId,
+      name: 'Milk',
+      amount: null,
+      bought: false,
+      createdAt: 1000,
+      changedAt: 1000,
+      deleted: false,
+    });
+    await createStorage(backend).save({
+      lists: [list, { ...list, id: 'list-2', name: 'Other' }],
+      items: [item('item-1', 'list-1'), item('item-2', 'list-2')],
+    });
+    const store = await openApp();
+    clock = 5000;
+
+    await store.getState().deleteList('list-1');
+
+    const items = (await openApp()).getState().data.items;
+    expect(items.map((i) => [i.id, i.deleted, i.changedAt])).toEqual([
+      ['item-1', true, 5000],
+      ['item-2', false, 1000],
+    ]);
+  });
+
+  it('cannot rename or delete a Shopping List that is already deleted', async () => {
+    const store = await openApp();
+    await store.getState().createList('Groceries');
+    await store.getState().deleteList('id-1');
+
+    await expect(store.getState().renameList('id-1', 'Back')).rejects.toThrow();
+    await expect(store.getState().deleteList('id-1')).rejects.toThrow();
+    expect(shownLists(await openApp())).toEqual([]);
+  });
+});
