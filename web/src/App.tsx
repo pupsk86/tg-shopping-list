@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useStore } from 'zustand';
-import { EditListScreen } from './screens/EditListScreen';
 import { ListsScreen } from './screens/ListsScreen';
 import { NewListScreen } from './screens/NewListScreen';
+import { RenameListScreen } from './screens/RenameListScreen';
 import type { ShoppingStore } from './store/store';
 
-type Screen = { name: 'lists' } | { name: 'newList' } | { name: 'editList'; listId: string };
+type Screen = { name: 'lists' } | { name: 'newList' } | { name: 'renameList'; listId: string };
 
 export function App({ store }: { store: ShoppingStore }) {
   const status = useStore(store, (state) => state.status);
@@ -46,14 +46,14 @@ function ReadyApp({ store, screen, setScreen }: ReadyProps) {
           onCreate={() => {
             setScreen({ name: 'newList' });
           }}
-          onEdit={(listId) => {
-            setScreen({ name: 'editList', listId });
+          onRename={(listId) => {
+            setScreen({ name: 'renameList', listId });
           }}
         />
       );
     case 'newList':
       return <NewListScreen store={store} onDone={toLists} />;
-    case 'editList':
-      return <EditListScreen store={store} listId={screen.listId} onDone={toLists} />;
+    case 'renameList':
+      return <RenameListScreen store={store} listId={screen.listId} onDone={toLists} />;
   }
 }

@@ -29,6 +29,7 @@ Decisions from the design brainstorm. Terms follow [GLOSSARY.md](../GLOSSARY.md)
 - Duplicate Items are allowed.
 - The app works offline only. Shopping Lists are stored on the device, so a User's phone and laptop do not share them.
 - Two screens: **Lists** (each Shopping List with its count of Items left to buy, most recently changed first) and **List** (To-buy on top, Bought below). No settings screen.
+- On the Lists screen, swiping a Shopping List's row to the left shows a pencil (rename) and a trash bin (delete). Kosta picked this over a pencil button on every row after trying both in a prototype.
 - Tapping an Item's checkbox toggles Bought; tapping its name opens an edit view (name, Amount, delete).
 - A new User sees an empty Lists screen with a "Create your first list" button.
 - The app follows the User's Telegram theme (light or dark) and uses Telegram's own buttons where it can.

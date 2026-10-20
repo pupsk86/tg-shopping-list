@@ -1,4 +1,4 @@
-import { useState, type ReactNode, type SyntheticEvent } from 'react';
+import { useState, type SyntheticEvent } from 'react';
 import { MAX_NAME_LENGTH, nameErrorMessages, type NameError } from '../domain/names';
 import { BackButton, MainButton } from '../telegram/buttons';
 
@@ -8,11 +8,10 @@ interface Props {
   /** Saves the name; the form shows the error if the name is rejected. */
   onSubmit: (name: string) => Promise<{ ok: true } | { ok: false; error: NameError }>;
   onDone: () => void;
-  children?: ReactNode;
 }
 
 /** The screen that asks for a Shopping List's name, for both creating and renaming. */
-export function ListNameForm({ initialName = '', submitText, onSubmit, onDone, children }: Props) {
+export function ListNameForm({ initialName = '', submitText, onSubmit, onDone }: Props) {
   const [name, setName] = useState(initialName);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -65,7 +64,6 @@ export function ListNameForm({ initialName = '', submitText, onSubmit, onDone, c
           {error}
         </p>
       </form>
-      {children}
       <MainButton text={submitText} loading={saving} onClick={() => void save()} />
     </main>
   );
