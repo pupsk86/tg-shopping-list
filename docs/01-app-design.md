@@ -30,6 +30,8 @@ Decisions from the design brainstorm. Terms follow [GLOSSARY.md](../GLOSSARY.md)
 - The app works offline only. Shopping Lists are stored on the device, so a User's phone and laptop do not share them.
 - Two screens: **Lists** (each Shopping List with its count of Items left to buy, most recently changed first) and **List** (To-buy on top, Bought below). No settings screen.
 - On the Lists screen, swiping a Shopping List's row to the left shows a pencil (rename) and a trash bin (delete). Kosta picked this over a pencil button on every row after trying both in a prototype.
+- Items are added in place on the List screen: an "Add item" row at the end of To-buy opens into a row with the name and Amount fields, a blue tick at the end that adds the Item, and a red minus at the start that closes the row. Return on the name also adds. After adding, the row clears for the next Item with the keyboard still up. Leaving an empty row, or Telegram's Back button, closes it; Back leaves the List only when no row is open. Kosta picked this after trying three versions in a prototype; the tick is there because the iPhone's number keypad has no Return key.
+- Amounts are shown with a decimal comma, such as 1,5, whichever separator was typed.
 - Tapping an Item's checkbox toggles Bought; tapping its name opens an edit view (name, Amount, delete).
 - A new User sees an empty Lists screen with a "Create your first list" button.
 - The app follows the User's Telegram theme (light or dark) and uses Telegram's own buttons where it can.
@@ -45,7 +47,6 @@ Decisions from the design brainstorm. Terms follow [GLOSSARY.md](../GLOSSARY.md)
 
 Decided by trying, not on paper, when the task that builds it comes up. Any other UI may be prototyped too if it is cheap.
 
-- How adding an Item works on the List screen.
 - What the Item edit view looks like.
 - How the Telegram theme looks applied to both screens.
 

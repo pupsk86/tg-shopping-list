@@ -6,6 +6,8 @@ interface Props {
   id: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** A tap on the closed row: no swipe, no scroll. */
+  onTap: () => void;
   /** The buttons a left swipe shows. */
   actions: ReactNode;
   children: ReactNode;
@@ -23,7 +25,7 @@ interface Drag {
 const SLOP = 6;
 
 /** A row that slides left to show its action buttons. One row is open at a time. */
-export function SwipeRow({ id, open, onOpenChange, actions, children }: Props) {
+export function SwipeRow({ id, open, onOpenChange, onTap, actions, children }: Props) {
   const drag = useRef<Drag | null>(null);
   const [offset, setOffset] = useState<number | null>(null);
   // The buttons are drawn only while the row is moved, so their colour can't show at its edges.
@@ -54,7 +56,9 @@ export function SwipeRow({ id, open, onOpenChange, actions, children }: Props) {
     const current = drag.current;
     if (current?.pointerId !== event.pointerId) return;
     drag.current = null;
-    if (current.horizontal) {
+    if (current.horizontal === undefined && !open && event.type === 'pointerup') {
+      onTap();
+    } else if (current.horizontal) {
       const next = offset !== null && staysOpen(offset);
       if (!next && offset === 0) setRevealed(false);
       onOpenChange(next);
@@ -78,6 +82,14 @@ export function SwipeRow({ id, open, onOpenChange, actions, children }: Props) {
         onPointerMove={move}
         onPointerUp={up}
         onPointerCancel={up}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onTap();
+          }
+        }}
         onTransitionEnd={() => {
           if (!open) setRevealed(false);
         }}

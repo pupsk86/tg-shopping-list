@@ -194,3 +194,145 @@ button.primary {
     transition: none;
   }
 }
+
+/* The List screen. */
+.list-title {
+  margin: 0 0 16px;
+  font-size: 22px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.item-rows > li + li {
+  border-top: 0.5px solid var(--tg-theme-section-separator-color, #c8c7cc);
+}
+
+.item .amount {
+  font-variant-numeric: tabular-nums;
+}
+
+.item.new {
+  animation: added 0.9s ease;
+}
+
+@keyframes added {
+  from {
+    background: color-mix(
+      in srgb,
+      var(--tg-theme-button-color, #2481cc) 25%,
+      var(--tg-theme-secondary-bg-color, #f1f1f1)
+    );
+  }
+}
+
+.check {
+  flex: none;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--tg-theme-hint-color, #999);
+}
+
+.bought .row-name {
+  text-decoration: line-through;
+  color: var(--tg-theme-hint-color, #999);
+}
+
+.add-item-button {
+  box-sizing: border-box;
+  width: 100%;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--tg-theme-link-color, #2481cc);
+  cursor: pointer;
+}
+
+.plus {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--tg-theme-link-color, #2481cc);
+  color: var(--tg-theme-secondary-bg-color, #f1f1f1);
+}
+
+.add-item {
+  gap: 8px;
+  padding-right: 8px;
+}
+
+.add-item input {
+  min-width: 0;
+  border: none;
+  padding: 10px 0;
+  font: inherit;
+  background: none;
+  color: var(--tg-theme-text-color, #000);
+  outline: none;
+}
+
+.add-item input::placeholder {
+  color: var(--tg-theme-hint-color, #999);
+}
+
+.item-name {
+  flex: 1;
+}
+
+.add-item .item-amount {
+  width: 72px;
+  padding-left: 8px;
+  border-left: 0.5px solid var(--tg-theme-section-separator-color, #c8c7cc);
+  text-align: right;
+}
+
+.round-button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  /* Same reset as .swipe-action: Safari on iOS adds its own margin, padding and shape. */
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.round-button.close {
+  width: 22px;
+  height: 22px;
+  background: var(--tg-theme-destructive-text-color, #ff3b30);
+  color: #fff;
+}
+
+.round-button.add {
+  width: 30px;
+  height: 30px;
+  background: var(--tg-theme-button-color, #2481cc);
+  color: var(--tg-theme-button-text-color, #fff);
+}
+
+.plus .icon,
+.round-button .icon {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.6;
+}
+
+.round-button.add .icon {
+  width: 18px;
+  height: 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item.new {
+    animation: none;
+  }
+}
