@@ -68,6 +68,8 @@
   .inline input { border: none; background: none; color: var(--text); outline: none; padding: 10px 0; min-width: 0; }
   .inline .in-name { flex: 1; }
   .inline .in-amount { width: 64px; text-align: right; border-left: 0.5px solid var(--separator); padding-left: 8px; }
+  .inline .add-btn { flex: none; width: 30px; height: 30px; border-radius: 50%; border: none; padding: 0; background: var(--button); color: var(--button-text); display: grid; place-items: center; cursor: pointer; }
+  .inline .add-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 
   /* C: composer */
   .composer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: var(--bg); border-top: 0.5px solid var(--separator);
@@ -104,7 +106,7 @@
 <script>
   // PROTOTYPE for #9: three ways to add an Item to a Shopping List. In memory only.
   const VARIANTS = {
-    a: { key: 'A', name: 'Inline row', note: 'Tap <strong>Add item</strong> at the bottom of the list. A row opens in place with the name and an Amount box. Return adds the Item and opens a fresh row for the next one.' },
+    a: { key: 'A', name: 'Inline row', note: 'Tap <strong>Add item</strong> at the bottom of the list. A row opens in place with the name, an Amount box and a blue tick. Return on the name, or the tick, adds the Item and opens a fresh row for the next one, keeping the keyboard up.' },
     b: { key: 'B', name: 'Add screen', note: "Telegram's bottom button <strong>Add item</strong> opens a separate screen with a name field and an Amount field, like creating a list. Save returns to the list." },
     c: { key: 'C', name: 'Chat bar', note: 'A message-style bar is always at the bottom. Type the name, and a number at the end becomes the Amount: <strong>Apples 1,5</strong>. Send keeps the keyboard open.' },
   };
@@ -190,8 +192,9 @@
       <ul class="rows">${rowsHtml()}
         ${inlineOpen ? `<li class="inline">
             <span class="spacer" aria-hidden="true"></span>
-            <input class="in-name" id="a-name" placeholder="Item" enterkeyhint="next" aria-label="Item name" autocomplete="off">
+            <input class="in-name" id="a-name" placeholder="Item" enterkeyhint="done" aria-label="Item name" autocomplete="off">
             <input class="in-amount" id="a-amount" placeholder="Amount" inputmode="decimal" enterkeyhint="done" aria-label="Amount" autocomplete="off">
+            <button type="button" class="add-btn" id="a-add" aria-label="Add item"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
           </li>` : `<li><button type="button" class="add-row" id="a-open"><span class="plus" aria-hidden="true">+</span>Add item</button></li>`}
       </ul>
       <p class="error" id="a-error" role="alert"></p>
@@ -206,6 +209,10 @@
       if (error) { errorEl.textContent = error; return; }
       render();
     };
+    const addBtn = document.getElementById('a-add');
+    // Keep the keyboard up: the tap must not take focus away from the fields.
+    addBtn.onpointerdown = (e) => e.preventDefault();
+    addBtn.onclick = submit;
     nameEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (nameEl.value.trim()) submit(); else { inlineOpen = false; render(); } } };
     amountEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } };
     [nameEl, amountEl].forEach((el) => { el.oninput = () => { errorEl.textContent = ''; }; });
