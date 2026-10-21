@@ -106,7 +106,7 @@
 <script>
   // PROTOTYPE for #9: three ways to add an Item to a Shopping List. In memory only.
   const VARIANTS = {
-    a: { key: 'A', name: 'Inline row', note: 'Tap <strong>Add item</strong> at the bottom of the list. A row opens in place with the name, an Amount box and a blue tick. Return on the name, or the tick, adds the Item and opens a fresh row for the next one, keeping the keyboard up.' },
+    a: { key: 'A', name: 'Inline row', note: 'Tap <strong>Add item</strong> at the bottom of the list. A row opens in place with the name, an Amount box and a blue tick. Return on the name, or the tick, adds the Item and opens a fresh row for the next one, keeping the keyboard up. To cancel, tap anywhere outside an empty row, or tap Back.' },
     b: { key: 'B', name: 'Add screen', note: "Telegram's bottom button <strong>Add item</strong> opens a separate screen with a name field and an Amount field, like creating a list. Save returns to the list." },
     c: { key: 'C', name: 'Chat bar', note: 'A message-style bar is always at the bottom. Type the name, and a number at the end becomes the Amount: <strong>Apples 1,5</strong>. Send keeps the keyboard open.' },
   };
@@ -171,7 +171,7 @@
   }
   function header() {
     return `<p class="note"><strong>${VARIANTS[variant].key} · ${VARIANTS[variant].name}.</strong> ${VARIANTS[variant].note}</p>
-      <button type="button" class="back">‹ Back</button>
+      <button type="button" class="back" id="list-back">‹ Back</button>
       <h1>Groceries</h1>
       <h2 class="section-header">To buy</h2>`;
   }
@@ -213,7 +213,19 @@
     // Keep the keyboard up: the tap must not take focus away from the fields.
     addBtn.onpointerdown = (e) => e.preventDefault();
     addBtn.onclick = submit;
-    nameEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (nameEl.value.trim()) submit(); else { inlineOpen = false; render(); } } };
+    const cancel = (why) => { inlineOpen = false; lastAction = why; render(); };
+    // Telegram's Back button closes the open row first, instead of leaving the list.
+    document.getElementById('list-back').onclick = () => cancel('Back closed the add row.');
+    // Leaving an empty row (tapping elsewhere, or hiding the keyboard) cancels it.
+    // A row with something typed stays open, so nothing typed is lost or added by accident.
+    const row = nameEl.closest('.inline');
+    row.addEventListener('focusout', () => {
+      setTimeout(() => {
+        if (!inlineOpen || row.contains(document.activeElement)) return;
+        if (!nameEl.value.trim() && !amountEl.value.trim()) cancel('Tapped outside an empty row, so it closed.');
+      }, 0);
+    });
+    nameEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (nameEl.value.trim()) submit(); else cancel('Return on an empty row closed it.'); } };
     amountEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } };
     [nameEl, amountEl].forEach((el) => { el.oninput = () => { errorEl.textContent = ''; }; });
   }
