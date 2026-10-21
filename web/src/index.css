@@ -234,6 +234,35 @@ button.primary {
   border: 1.5px solid var(--tg-theme-hint-color, #999);
 }
 
+.check-button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  /* A 44-point tap target around the 22-point circle, without moving the row's text. */
+  appearance: none;
+  -webkit-appearance: none;
+  margin: -11px;
+  padding: 11px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.check.checked {
+  display: grid;
+  place-items: center;
+  border: none;
+  background: var(--tg-theme-button-color, #2481cc);
+  color: var(--tg-theme-button-text-color, #fff);
+}
+
+.check .icon {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.6;
+}
+
 .bought .row-name {
   text-decoration: line-through;
   color: var(--tg-theme-hint-color, #999);

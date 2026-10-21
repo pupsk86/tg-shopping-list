@@ -408,3 +408,111 @@ describe('adding Items', () => {
     expect(store.getState().data.items).toEqual([]);
   });
 });
+
+describe('ticking Items off', () => {
+  /** Groceries (id-1) with Milk, Bread, Eggs, Apples (id-2 to id-5), added in that order. */
+  async function groceries() {
+    const store = await openApp();
+    await store.getState().createList('Groceries');
+    for (const name of ['Milk', 'Bread', 'Eggs', 'Apples']) {
+      clock += 1;
+      await store.getState().addItem('id-1', name, '');
+    }
+    return store;
+  }
+
+  function sections(store: Awaited<ReturnType<typeof openApp>>) {
+    const { toBuy, bought } = itemSections(store.getState().data, 'id-1');
+    return { toBuy: toBuy.map((item) => item.name), bought: bought.map((item) => item.name) };
+  }
+
+  it('moves a ticked Item to Bought', async () => {
+    const store = await groceries();
+
+    await store.getState().setBought('id-3', true);
+
+    expect(sections(store)).toEqual({ toBuy: ['Milk', 'Eggs', 'Apples'], bought: ['Bread'] });
+  });
+
+  it('keeps Bought in the order Items were added, not the order ticked', async () => {
+    const store = await groceries();
+
+    await store.getState().setBought('id-3', true);
+    await store.getState().setBought('id-5', true);
+    await store.getState().setBought('id-2', true);
+
+    expect(sections(store)).toEqual({ toBuy: ['Eggs'], bought: ['Milk', 'Bread', 'Apples'] });
+  });
+
+  it('puts an unticked Item back in its original place in To-buy', async () => {
+    const store = await groceries();
+    await store.getState().setBought('id-3', true);
+    await store.getState().setBought('id-5', true);
+
+    await store.getState().setBought('id-3', false);
+
+    expect(sections(store)).toEqual({ toBuy: ['Milk', 'Bread', 'Eggs'], bought: ['Apples'] });
+  });
+
+  it('keeps the count of Items left to buy right', async () => {
+    const store = await groceries();
+    const count = () => shownLists(store)[0]?.leftToBuy;
+
+    await store.getState().setBought('id-2', true);
+    await store.getState().setBought('id-3', true);
+    expect(count()).toBe(2);
+
+    for (const id of ['id-4', 'id-5']) await store.getState().setBought(id, true);
+    expect(count()).toBe(0);
+
+    await store.getState().setBought('id-2', false);
+    expect(count()).toBe(1);
+  });
+
+  it('moves the Shopping List to the top when ticking and unticking', async () => {
+    const store = await groceries();
+    clock = 5000;
+    await store.getState().createList('Hardware store');
+
+    clock = 6000;
+    await store.getState().setBought('id-2', true);
+    expect(shownLists(store).map((list) => list.name)).toEqual(['Groceries', 'Hardware store']);
+    expect(store.getState().data.lists[0]?.changedAt).toBe(6000);
+
+    clock = 7000;
+    await store.getState().createList('Pharmacy');
+    clock = 8000;
+    await store.getState().setBought('id-2', false);
+    expect(shownLists(store)[0]?.name).toBe('Groceries');
+  });
+
+  it('keeps Bought Items, their order and the count after the app is opened again', async () => {
+    const store = await groceries();
+    await store.getState().setBought('id-5', true);
+    await store.getState().setBought('id-3', true);
+
+    const reopened = await openApp();
+
+    expect(sections(reopened)).toEqual({ toBuy: ['Milk', 'Eggs'], bought: ['Bread', 'Apples'] });
+    expect(shownLists(reopened)[0]?.leftToBuy).toBe(2);
+  });
+
+  it('records the time of the change on the Item', async () => {
+    const store = await groceries();
+    clock = 9000;
+    await store.getState().setBought('id-2', true);
+
+    expect(store.getState().data.items.find((item) => item.id === 'id-2')).toMatchObject({
+      bought: true,
+      changedAt: 9000,
+      createdAt: 1001,
+    });
+  });
+
+  it('cannot tick an Item on a deleted Shopping List', async () => {
+    const store = await groceries();
+    await store.getState().deleteList('id-1');
+
+    await expect(store.getState().setBought('id-2', true)).rejects.toThrow();
+  });
+});

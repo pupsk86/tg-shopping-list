@@ -31,6 +31,8 @@ export interface ShoppingState {
    * counts as changed, so it moves to the top of Lists.
    */
   addItem(listId: string, name: string, amount: string): Promise<AddItemResult>;
+  /** Ticks an Item off as Bought, or unticks it. Its Shopping List counts as changed. */
+  setBought(itemId: string, bought: boolean): Promise<void>;
 }
 
 export type AddItemResult =
@@ -154,6 +156,21 @@ export function createShoppingStore({
         });
         return { ok: true, id };
       },
+
+      async setBought(itemId, bought) {
+        await commit((data) => {
+          const item = liveItem(data, itemId);
+          const changedAt = now();
+          return {
+            lists: data.lists.map((list) =>
+              list.id === item.listId ? { ...list, changedAt } : list,
+            ),
+            items: data.items.map((candidate) =>
+              candidate.id === itemId ? { ...candidate, bought, changedAt } : candidate,
+            ),
+          };
+        });
+      },
     };
   });
 }
@@ -163,6 +180,14 @@ function liveList(data: ShoppingData, id: string): ShoppingListRecord {
   const list = data.lists.find((candidate) => candidate.id === id && !candidate.deleted);
   if (!list) throw new Error(`No Shopping List ${id}`);
   return list;
+}
+
+/** The Item with this id, which must exist and not be deleted, on a Shopping List that isn't. */
+function liveItem(data: ShoppingData, id: string): ItemRecord {
+  const item = data.items.find((candidate) => candidate.id === id && !candidate.deleted);
+  if (!item) throw new Error(`No Item ${id}`);
+  liveList(data, item.listId);
+  return item;
 }
 
 export interface ListSummary {

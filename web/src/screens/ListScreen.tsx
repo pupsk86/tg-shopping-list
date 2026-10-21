@@ -4,7 +4,7 @@ import { formatAmount } from '../domain/amounts';
 import type { ItemRecord } from '../domain/records';
 import { itemSections, type ShoppingStore } from '../store/store';
 import { BackButton } from '../telegram/buttons';
-import { PlusIcon } from '../ui/icons';
+import { CheckIcon, PlusIcon } from '../ui/icons';
 import { AddItemRow } from './AddItemRow';
 
 interface Props {
@@ -22,6 +22,15 @@ export function ListScreen({ store, listId, onBack }: Props) {
   const [lastAdded, setLastAdded] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  async function setBought(item: ItemRecord, bought: boolean) {
+    try {
+      await store.getState().setBought(item.id, bought);
+    } catch (cause) {
+      console.error('Could not tick the Item', cause);
+      setError("Couldn't save the change. Try again.");
+    }
+  }
+
   function stopAdding() {
     setAdding(false);
     setError(null);
@@ -37,7 +46,12 @@ export function ListScreen({ store, listId, onBack }: Props) {
       <h2 className="section-header">To buy</h2>
       <ul className="rows item-rows">
         {toBuy.map((item) => (
-          <ItemRow key={item.id} item={item} isNew={item.id === lastAdded} />
+          <ItemRow
+            key={item.id}
+            item={item}
+            isNew={item.id === lastAdded}
+            onTick={() => void setBought(item, true)}
+          />
         ))}
         {adding ? (
           <AddItemRow
@@ -74,7 +88,12 @@ export function ListScreen({ store, listId, onBack }: Props) {
           <h2 className="section-header">Bought</h2>
           <ul className="rows item-rows bought">
             {bought.map((item) => (
-              <ItemRow key={item.id} item={item} isNew={false} />
+              <ItemRow
+                key={item.id}
+                item={item}
+                isNew={false}
+                onTick={() => void setBought(item, false)}
+              />
             ))}
           </ul>
         </>
@@ -83,10 +102,28 @@ export function ListScreen({ store, listId, onBack }: Props) {
   );
 }
 
-function ItemRow({ item, isNew }: { item: ItemRecord; isNew: boolean }) {
+interface ItemRowProps {
+  item: ItemRecord;
+  isNew: boolean;
+  /** Ticks the Item off, or unticks it if Bought. Only the checkbox does this, not the name. */
+  onTick: () => void;
+}
+
+function ItemRow({ item, isNew, onTick }: ItemRowProps) {
   return (
     <li className={isNew ? 'row item new' : 'row item'}>
-      <span className="check" aria-hidden="true" />
+      <button
+        type="button"
+        role="checkbox"
+        className="check-button"
+        aria-checked={item.bought}
+        aria-label={`Bought ${item.name}`}
+        onClick={onTick}
+      >
+        <span className={item.bought ? 'check checked' : 'check'} aria-hidden="true">
+          {item.bought && <CheckIcon />}
+        </span>
+      </button>
       <span className="row-name">{item.name}</span>
       {item.amount !== null && <span className="hint amount">{formatAmount(item.amount)}</span>}
     </li>
