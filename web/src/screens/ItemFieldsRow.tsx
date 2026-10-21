@@ -23,7 +23,7 @@ function keepFocus(event: PointerEvent) {
 /**
  * The row where a User types an Item's name and Amount, both to add an Item at the end of To-buy
  * and, in place of the Item's own row, to edit it. The tick or Return saves. The minus closes the
- * row without saving; so does leaving it while editing, or while adding with nothing typed.
+ * row without saving; so does leaving it.
  */
 export function ItemFieldsRow({ initial, onSubmit, onSaved, onClose, onError }: Props) {
   const adding = initial === undefined;
@@ -90,7 +90,7 @@ export function ItemFieldsRow({ initial, onSubmit, onSaved, onClose, onError }: 
         // Wait for focus to land: moving between the two fields is not leaving the row.
         setTimeout(() => {
           if (row.current?.contains(document.activeElement)) return;
-          if (!adding || empty) onClose();
+          onClose();
         }, 0);
       }}
     >
