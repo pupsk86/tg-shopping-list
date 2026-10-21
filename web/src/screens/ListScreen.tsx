@@ -34,6 +34,8 @@ export function ListScreen({ store, listId, onBack }: Props) {
   // A tap that closes a swiped row does only that; it doesn't also edit or tick an Item.
   const closingTap = useRef(false);
   const tapStart = useRef<{ x: number; y: number } | null>(null);
+  // Set when a tap was already handled as it ended, so its click (if it comes at all) does nothing.
+  const tapHandled = useRef(false);
 
   async function run(change: () => Promise<void>) {
     try {
@@ -114,14 +116,33 @@ export function ListScreen({ store, listId, onBack }: Props) {
         else closingTap.current = false;
       }}
       onPointerUpCapture={(event) => {
-        // A tap outside the open row of fields closes it before the tap's own click, so tapping
-        // another Item edits that one. Closing it later, on blur, makes Safari on iOS drop the click.
+        // While a row of fields is open, a tap outside it is handled as the finger lifts, not on
+        // click: on iOS the keyboard going away moves the page, and the click then misses or never
+        // comes. A tap on another Item's name or pencil, or on Add item, opens that row instead;
+        // any other tap just closes the open one.
         const start = tapStart.current;
         tapStart.current = null;
         if (!fields || !start) return;
         if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 10) return;
-        if ((event.target as Element).closest('.item-fields')) return;
-        closeFields();
+        const target = event.target as Element;
+        if (target.closest('.item-fields')) return;
+        const editId = target.closest('[data-edit-item]')?.getAttribute('data-edit-item');
+        if (editId) openFields({ kind: 'edit', itemId: editId });
+        else if (target.closest('.add-item-button')) openFields({ kind: 'add' });
+        else {
+          closeFields();
+          return;
+        }
+        tapHandled.current = true;
+        setTimeout(() => {
+          tapHandled.current = false;
+        }, 500);
+      }}
+      onClickCapture={(event) => {
+        if (!tapHandled.current) return;
+        tapHandled.current = false;
+        event.stopPropagation();
+        event.preventDefault();
       }}
     >
       {/* Back closes an open row of fields first, and only then leaves the list. */}
@@ -208,6 +229,7 @@ function ItemRow({ item, isNew, swiped, onSwipe, onTick, onEdit, onDelete }: Ite
             type="button"
             className="swipe-action rename"
             aria-label={`Edit ${item.name}`}
+            data-edit-item={item.id}
             onClick={onEdit}
           >
             <PencilIcon />
@@ -236,7 +258,12 @@ function ItemRow({ item, isNew, swiped, onSwipe, onTick, onEdit, onDelete }: Ite
             {item.bought && <CheckIcon />}
           </span>
         </button>
-        <button type="button" className="item-name-button" onClick={onEdit}>
+        <button
+          type="button"
+          className="item-name-button"
+          data-edit-item={item.id}
+          onClick={onEdit}
+        >
           {item.name}
         </button>
         {item.amount !== null && <span className="hint amount">{formatAmount(item.amount)}</span>}
