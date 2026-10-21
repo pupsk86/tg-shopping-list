@@ -68,19 +68,16 @@
   .inline input { border: none; background: none; color: var(--text); outline: none; padding: 10px 0; min-width: 0; }
   .inline .in-name { flex: 1; }
   .inline .in-amount { width: 64px; text-align: right; border-left: 0.5px solid var(--separator); padding-left: 8px; }
+  .inline .add-btn { flex: none; width: 30px; height: 30px; border-radius: 50%; border: none; padding: 0; background: var(--button); color: var(--button-text); display: grid; place-items: center; cursor: pointer; }
+  .inline .close-btn { flex: none; width: 22px; height: 22px; border-radius: 50%; border: none; padding: 0; margin: 0; appearance: none; -webkit-appearance: none; background: var(--destructive); color: #fff; display: grid; place-items: center; cursor: pointer; }
+  .inline .close-btn svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
+  .inline .add-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 
-  /* C: composer */
-  .composer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: var(--bg); border-top: 0.5px solid var(--separator);
-    padding: 8px max(12px, env(safe-area-inset-right, 0px)) calc(64px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
-  .composer form { max-width: 480px; margin: 0 auto; display: flex; gap: 8px; align-items: center; }
-  .composer .field { border-radius: 20px; padding: 9px 16px; }
-  .send { flex: none; width: 38px; height: 38px; border-radius: 50%; border: none; background: var(--button); color: var(--button-text); cursor: pointer; font-size: 20px; line-height: 1; }
-  .composer .error { margin: 6px 16px 0; max-width: 480px; }
-  .composer .hint { max-width: 480px; margin: 6px auto 0; padding: 0 16px; font-size: 12px; color: var(--hint); }
 
   /* Telegram Main button stand-in */
   .main-button { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: var(--bg);
     padding: 8px max(16px, env(safe-area-inset-right, 0px)) calc(64px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+  .main-button.over-keyboard { padding-bottom: 8px; }
   .main-button button { display: block; width: 100%; max-width: 480px; margin: 0 auto; border: none; border-radius: 10px; padding: 13px 20px; font-weight: 600; background: var(--button); color: var(--button-text); cursor: pointer; }
 
   .switch { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 20;
@@ -103,10 +100,12 @@
 
 <script>
   // PROTOTYPE for #9: three ways to add an Item to a Shopping List. In memory only.
+  // Three versions of one idea: an inline add row at the end of the list. They differ only in where the add button is.
+  const COMMON = 'Tap <strong>Add item</strong> at the end of the list and a row opens in place for the name and Amount. Return on the name also adds. After adding, the row clears for the next Item with the keyboard up. To cancel, tap outside an empty row, or tap Back.';
   const VARIANTS = {
-    a: { key: 'A', name: 'Inline row', note: 'Tap <strong>Add item</strong> at the bottom of the list. A row opens in place with the name and an Amount box. Return adds the Item and opens a fresh row for the next one.' },
-    b: { key: 'B', name: 'Add screen', note: "Telegram's bottom button <strong>Add item</strong> opens a separate screen with a name field and an Amount field, like creating a list. Save returns to the list." },
-    c: { key: 'C', name: 'Chat bar', note: 'A message-style bar is always at the bottom. Type the name, and a number at the end becomes the Amount: <strong>Apples 1,5</strong>. Send keeps the keyboard open.' },
+    a: { key: 'A', name: 'Tick at the end', note: 'A blue tick at the <strong>end</strong> of the row adds the Item. A red minus at the <strong>start</strong> closes the row, even with something typed. ' + COMMON },
+    b: { key: 'B', name: 'Tick at the start', note: 'A blue tick at the <strong>start</strong> of the row, where the plus was, adds the Item. ' + COMMON },
+    c: { key: 'C', name: 'Telegram button', note: "Telegram's own bottom button reads <strong>Add</strong> while the row is open, sitting just above the keyboard. A red minus at the <strong>start</strong> of the row closes it, even with something typed. " + COMMON },
   };
   const ORDER = ['a', 'b', 'c'];
   const START = [
@@ -169,7 +168,7 @@
   }
   function header() {
     return `<p class="note"><strong>${VARIANTS[variant].key} · ${VARIANTS[variant].name}.</strong> ${VARIANTS[variant].note}</p>
-      <button type="button" class="back">‹ Back</button>
+      <button type="button" class="back" id="list-back">‹ Back</button>
       <h1>Groceries</h1>
       <h2 class="section-header">To buy</h2>`;
   }
@@ -177,21 +176,24 @@
   function render() {
     document.getElementById('variant-label').textContent = `${VARIANTS[variant].key} · ${VARIANTS[variant].name}`;
     bottom.innerHTML = '';
-    if (variant === 'a') renderA();
-    if (variant === 'b') (screen === 'add' ? renderBAdd() : renderB());
-    if (variant === 'c') renderC();
+    renderInline(variant);
     const reset = document.getElementById('reset');
     if (reset) reset.onclick = () => { items = START.map((i) => ({ ...i })); justAdded = -1; inlineOpen = false; lastAction = 'Reset.'; render(); };
     justAdded = -1;
   }
 
-  function renderA() {
+  const TICK = '<button type="button" class="add-btn" id="a-add" aria-label="Add item"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>';
+
+  const CLOSE = '<button type="button" class="close-btn" id="a-close" aria-label="Close the add row"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg></button>';
+
+  function renderInline(v) {
     app.innerHTML = `${header()}
       <ul class="rows">${rowsHtml()}
         ${inlineOpen ? `<li class="inline">
-            <span class="spacer" aria-hidden="true"></span>
-            <input class="in-name" id="a-name" placeholder="Item" enterkeyhint="next" aria-label="Item name" autocomplete="off">
+            ${v === 'b' ? TICK : CLOSE}
+            <input class="in-name" id="a-name" placeholder="Item" enterkeyhint="done" aria-label="Item name" autocomplete="off">
             <input class="in-amount" id="a-amount" placeholder="Amount" inputmode="decimal" enterkeyhint="done" aria-label="Amount" autocomplete="off">
+            ${v === 'a' ? TICK : ''}
           </li>` : `<li><button type="button" class="add-row" id="a-open"><span class="plus" aria-hidden="true">+</span>Add item</button></li>`}
       </ul>
       <p class="error" id="a-error" role="alert"></p>
@@ -206,67 +208,49 @@
       if (error) { errorEl.textContent = error; return; }
       render();
     };
-    nameEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (nameEl.value.trim()) submit(); else { inlineOpen = false; render(); } } };
+    if (v === 'c') {
+      bottom.innerHTML = `<div class="main-button" id="main-button"><button type="button" id="a-add">Add</button></div>`;
+      placeAboveKeyboard();
+    }
+    const addBtn = document.getElementById('a-add');
+    // Keep the keyboard up: the tap must not take focus away from the fields.
+    addBtn.onpointerdown = (e) => e.preventDefault();
+    addBtn.onclick = submit;
+    const cancel = (why) => { inlineOpen = false; lastAction = why; render(); };
+    // Telegram's Back button closes the open row first, instead of leaving the list.
+    const closeBtn = document.getElementById('a-close');
+    if (closeBtn) {
+      closeBtn.onpointerdown = (e) => e.preventDefault();
+      closeBtn.onclick = () => cancel('Minus closed the add row.');
+    }
+    document.getElementById('list-back').onclick = () => cancel('Back closed the add row.');
+    // Leaving an empty row (tapping elsewhere, or hiding the keyboard) cancels it.
+    // A row with something typed stays open, so nothing typed is lost or added by accident.
+    const row = nameEl.closest('.inline');
+    row.addEventListener('focusout', () => {
+      setTimeout(() => {
+        if (!inlineOpen || row.contains(document.activeElement)) return;
+        if (!nameEl.value.trim() && !amountEl.value.trim()) cancel('Tapped outside an empty row, so it closed.');
+      }, 0);
+    });
+    nameEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (nameEl.value.trim()) submit(); else cancel('Return on an empty row closed it.'); } };
     amountEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } };
     [nameEl, amountEl].forEach((el) => { el.oninput = () => { errorEl.textContent = ''; }; });
   }
 
-  function renderB() {
-    app.innerHTML = `${header()}
-      <ul class="rows">${items.length ? rowsHtml() : '<li class="empty">Nothing to buy yet.</li>'}</ul>
-      ${footer()}`;
-    bottom.innerHTML = `<div class="main-button"><button type="button" id="b-open">Add item</button></div>`;
-    document.getElementById('b-open').onclick = () => { screen = 'add'; render(); };
+  // Telegram draws its bottom button just above the keyboard. A page can only imitate that by
+  // following the visible part of the screen, which shrinks when the keyboard opens.
+  function placeAboveKeyboard() {
+    const el = document.getElementById('main-button');
+    const vv = window.visualViewport;
+    if (!el || !vv) return;
+    const hidden = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    el.style.bottom = hidden + 'px';
+    el.classList.toggle('over-keyboard', hidden > 0);
   }
-  function renderBAdd() {
-    app.innerHTML = `<p class="note"><strong>B · Add screen.</strong> Telegram's Back button returns to the list without adding.</p>
-      <button type="button" class="back" id="b-back">‹ Back</button>
-      <p class="label">Item</p>
-      <input class="field" id="b-name" placeholder="Milk" enterkeyhint="next" autocomplete="off" aria-label="Item name">
-      <p class="label">Amount (optional)</p>
-      <input class="field" id="b-amount" placeholder="1" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-label="Amount">
-      <p class="error" id="b-error" role="alert"></p>`;
-    bottom.innerHTML = `<div class="main-button"><button type="button" id="b-save">Add</button></div>`;
-    const nameEl = document.getElementById('b-name');
-    const amountEl = document.getElementById('b-amount');
-    const errorEl = document.getElementById('b-error');
-    nameEl.focus();
-    const save = () => {
-      const error = add(nameEl.value, amountEl.value);
-      if (error) { errorEl.textContent = error; return; }
-      screen = 'list'; render();
-    };
-    document.getElementById('b-save').onclick = save;
-    document.getElementById('b-back').onclick = () => { screen = 'list'; lastAction = 'Went back without adding.'; render(); };
-    nameEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); amountEl.focus(); } };
-    amountEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } };
-    [nameEl, amountEl].forEach((el) => { el.oninput = () => { errorEl.textContent = ''; }; });
-  }
-
-  function renderC() {
-    app.innerHTML = `${header()}
-      <ul class="rows">${items.length ? rowsHtml() : '<li class="empty">Nothing to buy yet.</li>'}</ul>
-      ${footer()}`;
-    bottom.innerHTML = `<div class="composer">
-        <form id="c-form" novalidate>
-          <input class="field" id="c-text" placeholder="Add an item, e.g. Apples 1,5" enterkeyhint="send" autocomplete="off" aria-label="Item and optional Amount">
-          <button type="submit" class="send" aria-label="Add">↑</button>
-        </form>
-        <p class="error" id="c-error" role="alert"></p>
-      </div>`;
-    const textEl = document.getElementById('c-text');
-    const errorEl = document.getElementById('c-error');
-    document.getElementById('c-form').onsubmit = (e) => {
-      e.preventDefault();
-      // A number at the end, after a space, is the Amount: "Apples 1,5". "Apples 1,5 kg" stays a name.
-      const m = textEl.value.trim().match(/^(.*\S)\s+(\S+)$/);
-      const looksLikeAmount = m && /^[-\d.,]+$/.test(m[2]);
-      const error = looksLikeAmount ? add(m[1], m[2]) : add(textEl.value, '');
-      if (error) { errorEl.textContent = error; return; }
-      render();
-      document.getElementById('c-text').focus();
-    };
-    textEl.oninput = () => { errorEl.textContent = ''; };
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', placeAboveKeyboard);
+    window.visualViewport.addEventListener('scroll', placeAboveKeyboard);
   }
 
   function go(step) {
