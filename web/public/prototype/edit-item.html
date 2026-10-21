@@ -67,6 +67,17 @@
   .round.trash { width: 22px; height: 22px; background: var(--destructive); color: #fff; }
   .round.trash svg { width: 13px; height: 13px; stroke-width: 2.2; }
 
+  /* A: swipe left for pencil and trash, as on Lists */
+  .swipe { position: relative; overflow: hidden; }
+  .swipe .content { position: relative; background: var(--section); touch-action: pan-y; user-select: none; -webkit-user-select: none; transition: transform .22s ease; }
+  .swipe .content.dragging { transition: none; }
+  .actions { position: absolute; inset: 0 0 0 auto; display: flex; width: 128px; }
+  .swipe:not(.revealing) .actions { visibility: hidden; }
+  .actions button { flex: 1; display: flex; align-items: center; justify-content: center; margin: 0; padding: 0; border: none; border-radius: 0; color: #fff; cursor: pointer; }
+  .actions .edit { background: #8e8e93; }
+  .actions .delete { background: var(--destructive); }
+  .actions svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
   /* B and C: form fields */
   .label { margin: 0 0 -8px 16px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.02em; color: var(--hint); }
   .field { box-sizing: border-box; width: 100%; border: none; border-radius: 12px; padding: 12px 16px; background: var(--section); color: var(--text); outline: none; }
@@ -118,7 +129,7 @@
   // PROTOTYPE for #12: three ways to edit or delete an Item. In memory only.
   const COMMON = 'Tap an Item\'s <strong>name</strong> to edit it. Delete is immediate, with an <strong>Undo</strong> toast for 5 seconds. Back leaves without saving.';
   const VARIANTS = {
-    a: { key: 'A', name: 'Edit in the row', note: 'The row turns into fields like the add row: the blue tick saves, the red trash at the start deletes. Return saves; tapping outside leaves it unchanged. ' + COMMON },
+    a: { key: 'A', name: 'Edit in the row', note: '<strong>Swipe an Item left</strong> for a pencil and a trash, as on Lists; the trash deletes straight away. The pencil, or tapping the name, turns the row into fields like the add row: the blue tick saves, the red trash at the start deletes. Return saves; tapping outside leaves it unchanged. ' + COMMON },
     b: { key: 'B', name: 'Edit screen', note: 'A screen of its own with the name and Amount, Telegram\'s bottom button reading <strong>Save</strong>, and a red <strong>Delete item</strong> row. ' + COMMON },
     c: { key: 'C', name: 'Sheet', note: 'A sheet slides up over the list with the name and Amount, <strong>Save</strong> at the top right and <strong>Delete item</strong> below. Tapping the dimmed list closes it. ' + COMMON },
   };
@@ -142,6 +153,9 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const fmt = (n) => String(n).replace('.', ',');
   const TICK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  const PENCIL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
+  const BIG_TRASH = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4.5h6V7"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/></svg>';
+  const SWIPE_WIDTH = 128;
   const TRASH = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13"/></svg>';
 
   // The same rules the app uses when adding.
@@ -171,8 +185,8 @@
     return null;
   }
   function cancel(why) { editing = null; lastAction = why; render(); }
-  function remove() {
-    const it = item(editing);
+  function remove(id = editing) {
+    const it = item(id);
     it.deleted = true; editing = null;
     lastAction = `Deleted "${it.name}".`;
     showToast(it.id);
@@ -202,11 +216,19 @@
         <button type="button" class="round save" id="e-save" aria-label="Save">${TICK}</button>
       </li>`;
     }
-    return `<li class="row${flash === i.id ? ' flash' : ''}">
-      <span class="check" aria-hidden="true"></span>
+    const content = `<span class="check" aria-hidden="true"></span>
       <button type="button" class="name" data-id="${i.id}">${esc(i.name)}</button>
-      ${i.amount === null ? '' : `<span class="amount">${fmt(i.amount)}</span>`}
-    </li>`;
+      ${i.amount === null ? '' : `<span class="amount">${fmt(i.amount)}</span>`}`;
+    if (variant === 'a') {
+      return `<li class="swipe" data-id="${i.id}">
+        <div class="actions" aria-hidden="true">
+          <button type="button" class="edit" data-act="edit" tabindex="-1" aria-label="Edit ${esc(i.name)}">${PENCIL}</button>
+          <button type="button" class="delete" data-act="delete" tabindex="-1" aria-label="Delete ${esc(i.name)}">${BIG_TRASH}</button>
+        </div>
+        <div class="row content${flash === i.id ? ' flash' : ''}">${content}</div>
+      </li>`;
+    }
+    return `<li class="row${flash === i.id ? ' flash' : ''}">${content}</li>`;
   }
   function footer() {
     const live = items.filter((i) => !i.deleted);
@@ -233,6 +255,7 @@
   }
 
   function render() {
+    openRow = null;
     document.getElementById('variant-label').textContent = `${VARIANTS[variant].key} · ${VARIANTS[variant].name}`;
     layer.innerHTML = '';
     if (variant === 'b' && editing !== null) renderScreen();
@@ -240,6 +263,7 @@
       app.innerHTML = listHtml();
       document.getElementById('back').onclick = () => { if (editing !== null) cancel('Back closed the edit without saving.'); else lastAction = 'Back would return to Lists.'; render(); };
       app.querySelectorAll('.name').forEach((b) => { b.onclick = () => { editing = Number(b.dataset.id); flash = null; render(); }; });
+      if (variant === 'a') app.querySelectorAll('.swipe').forEach(wireSwipe);
       if (variant === 'a' && editing !== null) wireInline();
       if (variant === 'c' && editing !== null) renderSheet();
     }
@@ -256,12 +280,89 @@
     // Tapping these must not take focus from the fields.
     ['e-save', 'e-delete'].forEach((id) => { document.getElementById(id).onpointerdown = (e) => e.preventDefault(); });
     document.getElementById('e-save').onclick = submit;
-    document.getElementById('e-delete').onclick = remove;
+    document.getElementById('e-delete').onclick = () => remove();
     row.addEventListener('focusout', () => setTimeout(() => {
       if (editing === null || row.contains(document.activeElement)) return;
       cancel('Tapped outside, so the edit closed without saving.');
     }, 0));
   }
+
+  // Swipe left to show the pencil and trash; one row open at a time; a tap elsewhere closes it.
+  let openRow = null;
+  let swiped = false; // the click that ends a swipe must not open the edit
+  function wireSwipe(row) {
+    const id = Number(row.dataset.id);
+    const content = row.querySelector('.content');
+    row.querySelectorAll('.actions button').forEach((b) => {
+      b.onclick = () => {
+        openRow = null;
+        if (b.dataset.act === 'delete') remove(id);
+        else { editing = id; render(); }
+      };
+    });
+    content.querySelector('.name').addEventListener('click', (e) => {
+      if (swiped) { e.stopImmediatePropagation(); swiped = false; }
+    }, true);
+    let startX = 0, startY = 0, base = 0, dx = 0, tracking = false, decided = false, horizontal = false;
+    const setX = (x) => { content.style.transform = `translateX(${x}px)`; };
+    content.addEventListener('pointerdown', (e) => {
+      tracking = true; decided = false; horizontal = false;
+      startX = e.clientX; startY = e.clientY; dx = 0;
+      base = openRow === row ? -SWIPE_WIDTH : 0;
+    });
+    content.addEventListener('pointermove', (e) => {
+      if (!tracking) return;
+      const mx = e.clientX - startX, my = e.clientY - startY;
+      if (!decided && (Math.abs(mx) > 6 || Math.abs(my) > 6)) {
+        decided = true; horizontal = Math.abs(mx) > Math.abs(my);
+        if (horizontal) { content.setPointerCapture(e.pointerId); content.classList.add('dragging'); row.classList.add('revealing'); }
+      }
+      if (!horizontal) return;
+      dx = mx;
+      let x = base + dx;
+      if (x > 0) x = x / 4;
+      if (x < -SWIPE_WIDTH) x = -SWIPE_WIDTH + (x + SWIPE_WIDTH) / 4;
+      setX(x);
+    });
+    const end = () => {
+      if (!tracking) return;
+      tracking = false;
+      content.classList.remove('dragging');
+      if (!horizontal) {
+        if (openRow === row) { closeOpenRow(); swiped = true; }
+        return;
+      }
+      swiped = true;
+      const opened = base + dx < -SWIPE_WIDTH / 2;
+      setX(opened ? -SWIPE_WIDTH : 0);
+      if (opened) {
+        openRow = row;
+        row.querySelectorAll('.actions button').forEach((b) => { b.tabIndex = 0; });
+        row.querySelector('.actions').setAttribute('aria-hidden', 'false');
+        lastAction = `Swiped "${item(id).name}" open.`;
+        document.querySelector('.log').textContent = document.querySelector('.log').textContent.replace(/^Last action: .*/, 'Last action: ' + lastAction);
+      } else {
+        if (openRow === row) openRow = null;
+        hideActions(row);
+      }
+    };
+    content.addEventListener('pointerup', end);
+    content.addEventListener('pointercancel', end);
+  }
+  function hideActions(row) { setTimeout(() => { if (openRow !== row) row.classList.remove('revealing'); }, 250); }
+  function closeOpenRow() {
+    if (!openRow) return;
+    const row = openRow;
+    openRow = null;
+    row.querySelector('.content').style.transform = 'translateX(0)';
+    row.querySelectorAll('.actions button').forEach((b) => { b.tabIndex = -1; });
+    row.querySelector('.actions').setAttribute('aria-hidden', 'true');
+    hideActions(row);
+  }
+  document.addEventListener('pointerdown', (e) => {
+    swiped = false;
+    if (openRow && !openRow.contains(e.target)) { closeOpenRow(); swiped = true; }
+  }, true);
 
   function formHtml() {
     const it = item(editing);
@@ -282,7 +383,7 @@
     layer.innerHTML = '<div class="main-button"><button type="button" id="e-save">Save</button></div>';
     const submit = wireFields(document.getElementById('e-name'), document.getElementById('e-amount'), document.getElementById('e-error'));
     document.getElementById('e-save').onclick = submit;
-    document.getElementById('e-delete').onclick = remove;
+    document.getElementById('e-delete').onclick = () => remove();
     document.getElementById('back').onclick = () => cancel('Back left the edit screen without saving.');
   }
 
@@ -299,7 +400,7 @@
       </div>`;
     const submit = wireFields(document.getElementById('e-name'), document.getElementById('e-amount'), document.getElementById('e-error'));
     document.getElementById('e-save').onclick = submit;
-    document.getElementById('e-delete').onclick = remove;
+    document.getElementById('e-delete').onclick = () => remove();
     document.getElementById('e-cancel').onclick = () => cancel('Cancel closed the sheet without saving.');
     document.getElementById('scrim').onclick = () => cancel('Tapping the list closed the sheet without saving.');
   }
