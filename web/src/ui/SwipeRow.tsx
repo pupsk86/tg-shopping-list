@@ -6,8 +6,8 @@ interface Props {
   id: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** A tap on the closed row: no swipe, no scroll. */
-  onTap: () => void;
+  /** A tap on the closed row: no swipe, no scroll. Leave it out when the row's own buttons handle taps. */
+  onTap?: () => void;
   /** The buttons a left swipe shows. */
   actions: ReactNode;
   children: ReactNode;
@@ -57,7 +57,7 @@ export function SwipeRow({ id, open, onOpenChange, onTap, actions, children }: P
     if (current?.pointerId !== event.pointerId) return;
     drag.current = null;
     if (current.horizontal === undefined && !open && event.type === 'pointerup') {
-      onTap();
+      onTap?.();
     } else if (current.horizontal) {
       const next = offset !== null && staysOpen(offset);
       if (!next && offset === 0) setRevealed(false);
@@ -82,14 +82,17 @@ export function SwipeRow({ id, open, onOpenChange, onTap, actions, children }: P
         onPointerMove={move}
         onPointerUp={up}
         onPointerCancel={up}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            onTap();
-          }
-        }}
+        role={onTap && 'button'}
+        tabIndex={onTap && 0}
+        onKeyDown={
+          onTap &&
+          ((event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              onTap();
+            }
+          })
+        }
         onTransitionEnd={() => {
           if (!open) setRevealed(false);
         }}
