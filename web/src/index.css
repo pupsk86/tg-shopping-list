@@ -18,7 +18,14 @@ body {
 .screen {
   box-sizing: border-box;
   min-height: 100vh;
-  padding: 16px;
+  /* Fullscreen on phones: keep clear of the notch and of Telegram's Close and menu buttons. */
+  padding: calc(
+      16px + var(--tg-viewport-safe-area-inset-top, 0px) +
+        var(--tg-viewport-content-safe-area-inset-top, 0px)
+    )
+    calc(16px + var(--tg-viewport-safe-area-inset-right, 0px))
+    calc(16px + var(--tg-viewport-safe-area-inset-bottom, 0px))
+    calc(16px + var(--tg-viewport-safe-area-inset-left, 0px));
 }
 
 .empty {

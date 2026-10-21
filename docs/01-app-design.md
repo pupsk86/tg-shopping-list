@@ -36,6 +36,7 @@ Decisions from the design brainstorm. Terms follow [GLOSSARY.md](../GLOSSARY.md)
 - Swiping an Item's row to the left shows a pencil (edit, as above) and a trash bin (delete, at once with an Undo toast), as on the Lists screen. Kosta picked this over a separate edit screen and a sheet after trying all three in a prototype.
 - A new User sees an empty Lists screen with a "Create your first list" button.
 - The app follows the User's Telegram theme (light or dark) and uses Telegram's own buttons where it can.
+- On phones the app opens fullscreen, with its content kept clear of the notch and Telegram's Close and menu buttons. On desktop it keeps Telegram's usual window. Kosta asked for this after testing on the phone.
 - The bot only opens the mini app. Adding Items by chat message and notifications are out of scope.
 - The interface is English only.
 
