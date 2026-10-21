@@ -145,14 +145,26 @@ button.primary {
   transition: transform 0.22s ease;
 }
 
-.swipe-row .row.dragging {
+.swipe-row .row.dragging,
+.swipe-actions.dragging {
   transition: none;
 }
 
 .swipe-actions {
   position: absolute;
-  inset: 0 0 0 auto;
+  top: 0;
+  bottom: 0;
+  left: 100%;
   display: flex;
+  transition: transform 0.22s ease;
+}
+
+/* Hidden once the closing slide ends, so not even a blurred edge pixel can show beside a closed row. */
+.swipe-actions.closed {
+  visibility: hidden;
+  transition:
+    transform 0.22s ease,
+    visibility 0s 0.22s;
 }
 
 .swipe-action {
@@ -190,7 +202,9 @@ button.primary {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .swipe-row .row {
+  .swipe-row .row,
+  .swipe-actions,
+  .swipe-actions.closed {
     transition: none;
   }
 }

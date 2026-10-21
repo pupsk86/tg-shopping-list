@@ -28,9 +28,9 @@ const SLOP = 6;
 export function SwipeRow({ id, open, onOpenChange, onTap, actions, children }: Props) {
   const drag = useRef<Drag | null>(null);
   const [offset, setOffset] = useState<number | null>(null);
-  // The buttons are drawn only while the row is moved, so their colour can't show at its edges.
-  const [revealed, setRevealed] = useState(open);
   const resting = open ? -ACTIONS_WIDTH : 0;
+  const position = offset ?? resting;
+  const moving = offset === null ? '' : ' dragging';
 
   function down(event: PointerEvent<HTMLDivElement>) {
     drag.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY };
@@ -46,7 +46,6 @@ export function SwipeRow({ id, open, onOpenChange, onTap, actions, children }: P
       current.horizontal = Math.abs(movedX) > Math.abs(movedY);
       if (current.horizontal) {
         event.currentTarget.setPointerCapture(event.pointerId);
-        setRevealed(true);
       }
     }
     if (current.horizontal) setOffset(dragOffset(resting, movedX));
@@ -59,9 +58,7 @@ export function SwipeRow({ id, open, onOpenChange, onTap, actions, children }: P
     if (current.horizontal === undefined && !open && event.type === 'pointerup') {
       onTap?.();
     } else if (current.horizontal) {
-      const next = offset !== null && staysOpen(offset);
-      if (!next && offset === 0) setRevealed(false);
-      onOpenChange(next);
+      onOpenChange(offset !== null && staysOpen(offset));
     } else if (open) {
       onOpenChange(false);
     }
@@ -70,14 +67,19 @@ export function SwipeRow({ id, open, onOpenChange, onTap, actions, children }: P
 
   return (
     <li className="swipe-row" data-row-id={id}>
-      {(revealed || open) && (
-        <div className="swipe-actions" style={{ width: ACTIONS_WIDTH }}>
-          {actions}
-        </div>
-      )}
+      {/* The buttons sit just past the row's right edge and slide in with it, so a closed row can't show any of them. */}
       <div
-        className={offset === null ? 'row' : 'row dragging'}
-        style={{ transform: `translateX(${String(offset ?? resting)}px)` }}
+        className={`swipe-actions${moving}${offset === null && !open ? ' closed' : ''}`}
+        style={{
+          width: Math.max(ACTIONS_WIDTH, -position),
+          transform: `translateX(${String(position)}px)`,
+        }}
+      >
+        {actions}
+      </div>
+      <div
+        className={`row${moving}`}
+        style={{ transform: `translateX(${String(position)}px)` }}
         onPointerDown={down}
         onPointerMove={move}
         onPointerUp={up}
@@ -93,9 +95,6 @@ export function SwipeRow({ id, open, onOpenChange, onTap, actions, children }: P
             }
           })
         }
-        onTransitionEnd={() => {
-          if (!open) setRevealed(false);
-        }}
       >
         {children}
       </div>
