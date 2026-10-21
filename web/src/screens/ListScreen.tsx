@@ -33,6 +33,7 @@ export function ListScreen({ store, listId, onBack }: Props) {
   const [error, setError] = useState<string | null>(null);
   // A tap that closes a swiped row does only that; it doesn't also edit or tick an Item.
   const closingTap = useRef(false);
+  const tapStart = useRef<{ x: number; y: number } | null>(null);
 
   async function run(change: () => Promise<void>) {
     try {
@@ -104,12 +105,23 @@ export function ListScreen({ store, listId, onBack }: Props) {
     <main
       className="screen"
       onPointerDownCapture={(event) => {
+        tapStart.current = { x: event.clientX, y: event.clientY };
         // A tap anywhere but the swiped row closes it.
         closingTap.current = swipedId !== null;
         if (swipedId === null) return;
         const row = (event.target as Element).closest('[data-row-id]');
         if (row?.getAttribute('data-row-id') !== swipedId) setSwipedId(null);
         else closingTap.current = false;
+      }}
+      onPointerUpCapture={(event) => {
+        // A tap outside the open row of fields closes it before the tap's own click, so tapping
+        // another Item edits that one. Closing it later, on blur, makes Safari on iOS drop the click.
+        const start = tapStart.current;
+        tapStart.current = null;
+        if (!fields || !start) return;
+        if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 10) return;
+        if ((event.target as Element).closest('.item-fields')) return;
+        closeFields();
       }}
     >
       {/* Back closes an open row of fields first, and only then leaves the list. */}

@@ -87,9 +87,10 @@ export function ItemFieldsRow({ initial, onSubmit, onSaved, onClose, onError }: 
       ref={row}
       className="row item-fields"
       onBlur={() => {
-        // Wait for focus to land: moving between the two fields is not leaving the row.
+        // Wait for focus to land: moving between the two fields is not leaving the row. A row
+        // already gone was closed by whatever replaced it, and must not close its replacement.
         setTimeout(() => {
-          if (row.current?.contains(document.activeElement)) return;
+          if (!row.current || row.current.contains(document.activeElement)) return;
           onClose();
         }, 0);
       }}
