@@ -1,4 +1,13 @@
-import { backButton, init, isTMA, mainButton, miniApp, themeParams } from '@tma.js/sdk-react';
+import {
+  backButton,
+  init,
+  isTMA,
+  mainButton,
+  miniApp,
+  retrieveLaunchParams,
+  themeParams,
+  viewport,
+} from '@tma.js/sdk-react';
 
 export type TelegramMode = 'telegram' | 'fake';
 
@@ -34,6 +43,27 @@ export async function setUpTelegram(): Promise<TelegramMode | null> {
   miniApp.bindCssVars();
   mainButton.mount();
   backButton.mount();
+  await goFullscreen();
   miniApp.ready();
   return mode;
+}
+
+/**
+ * On phones the app fills the whole screen, under Telegram's own Close and menu buttons. The
+ * insets that keep content clear of them and of the phone's notch are bound to CSS variables
+ * (`--tg-viewport-safe-area-inset-top`, `--tg-viewport-content-safe-area-inset-top` and so on).
+ * Older clients, and desktop, keep the usual sheet.
+ */
+async function goFullscreen(): Promise<void> {
+  try {
+    await viewport.mount({ timeout: 2000 });
+    viewport.bindCssVars();
+    const platform = retrieveLaunchParams().tgWebAppPlatform;
+    if (platform !== 'ios' && platform !== 'android') return;
+    if (viewport.requestFullscreen.isAvailable() && !viewport.isFullscreen()) {
+      await viewport.requestFullscreen({ timeout: 2000 });
+    }
+  } catch (cause) {
+    console.warn('Could not open the mini app fullscreen', cause);
+  }
 }

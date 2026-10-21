@@ -35,6 +35,20 @@ export function mockTelegram(): void {
       if (event.name === 'web_app_request_theme') {
         emitEvent('theme_changed', { theme_params: themeParams });
       }
+      if (event.name === 'web_app_request_viewport') {
+        emitEvent('viewport_changed', {
+          height: window.innerHeight,
+          width: window.innerWidth,
+          is_expanded: true,
+          is_state_stable: true,
+        });
+      }
+      if (event.name === 'web_app_request_safe_area') {
+        emitEvent('safe_area_changed', { top: 0, bottom: 0, left: 0, right: 0 });
+      }
+      if (event.name === 'web_app_request_content_safe_area') {
+        emitEvent('content_safe_area_changed', { top: 0, bottom: 0, left: 0, right: 0 });
+      }
     },
   });
   console.info(
