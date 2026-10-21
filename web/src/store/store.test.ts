@@ -516,3 +516,142 @@ describe('ticking Items off', () => {
     await expect(store.getState().setBought('id-2', true)).rejects.toThrow();
   });
 });
+
+describe('editing and deleting Items', () => {
+  /** Groceries (id-1) with Milk, Bread (2), Eggs (id-2 to id-4), added in that order. */
+  async function groceries() {
+    const store = await openApp();
+    await store.getState().createList('Groceries');
+    for (const [name, amount] of [
+      ['Milk', ''],
+      ['Bread', '2'],
+      ['Eggs', ''],
+    ] as const) {
+      clock += 1;
+      await store.getState().addItem('id-1', name, amount);
+    }
+    return store;
+  }
+
+  function toBuy(store: Awaited<ReturnType<typeof openApp>>) {
+    return itemSections(store.getState().data, 'id-1').toBuy.map((item) => [
+      item.name,
+      item.amount,
+    ]);
+  }
+
+  it('changes the name and Amount in the same place', async () => {
+    const store = await groceries();
+
+    expect(await store.getState().editItem('id-3', ' Rye bread ', '1,5')).toEqual({ ok: true });
+
+    expect(toBuy(store)).toEqual([
+      ['Milk', null],
+      ['Rye bread', 1.5],
+      ['Eggs', null],
+    ]);
+  });
+
+  it('removes the Amount when it is cleared', async () => {
+    const store = await groceries();
+    await store.getState().editItem('id-3', 'Bread', ' ');
+    expect(toBuy(store)[1]).toEqual(['Bread', null]);
+  });
+
+  it('rejects a bad name or Amount, saying which, and keeps the old values', async () => {
+    const store = await groceries();
+
+    expect(await store.getState().editItem('id-3', '', '2')).toEqual({
+      ok: false,
+      field: 'name',
+      error: 'empty',
+    });
+    expect(await store.getState().editItem('id-3', 'a'.repeat(101), '2')).toEqual({
+      ok: false,
+      field: 'name',
+      error: 'tooLong',
+    });
+    expect(await store.getState().editItem('id-3', 'Bread', '0')).toEqual({
+      ok: false,
+      field: 'amount',
+      error: 'notPositive',
+    });
+    expect(await store.getState().editItem('id-3', 'Bread', '1.234')).toEqual({
+      ok: false,
+      field: 'amount',
+      error: 'tooManyDecimals',
+    });
+    expect(toBuy(await openApp())[1]).toEqual(['Bread', 2]);
+  });
+
+  it('keeps an edited Item Bought', async () => {
+    const store = await groceries();
+    await store.getState().setBought('id-3', true);
+    await store.getState().editItem('id-3', 'Rye bread', '');
+
+    expect(itemSections(store.getState().data, 'id-1').bought.map((item) => item.name)).toEqual([
+      'Rye bread',
+    ]);
+  });
+
+  it('hides a deleted Item and lowers the count, also after the app is opened again', async () => {
+    const store = await groceries();
+
+    await store.getState().deleteItem('id-2');
+
+    expect(toBuy(store).map(([name]) => name)).toEqual(['Bread', 'Eggs']);
+    expect(shownLists(store)[0]?.leftToBuy).toBe(2);
+    const reopened = await openApp();
+    expect(toBuy(reopened).map(([name]) => name)).toEqual(['Bread', 'Eggs']);
+    expect(shownLists(reopened)[0]?.leftToBuy).toBe(2);
+  });
+
+  it('keeps the deleted Item with its mark and the time of the delete (ADR 0002)', async () => {
+    const store = await groceries();
+    clock = 9000;
+    await store.getState().deleteItem('id-3');
+
+    expect(
+      (await openApp()).getState().data.items.find((item) => item.id === 'id-3'),
+    ).toMatchObject({ name: 'Bread', deleted: true, changedAt: 9000 });
+  });
+
+  it('brings an Item back in its original place with Undo', async () => {
+    const store = await groceries();
+    await store.getState().deleteItem('id-3');
+
+    await store.getState().restoreItem('id-3');
+
+    expect(toBuy(store)).toEqual([
+      ['Milk', null],
+      ['Bread', 2],
+      ['Eggs', null],
+    ]);
+    expect(shownLists(await openApp())[0]?.leftToBuy).toBe(3);
+  });
+
+  it('moves the Shopping List to the top on edit, delete and Undo', async () => {
+    const store = await groceries();
+    for (const [time, change] of [
+      [6000, () => store.getState().editItem('id-2', 'Oat milk', '')],
+      [8000, () => store.getState().deleteItem('id-2')],
+      [10000, () => store.getState().restoreItem('id-2')],
+    ] as const) {
+      clock = time - 1000;
+      await store.getState().createList(`Other ${String(time)}`);
+      clock = time;
+      await change();
+      expect(shownLists(store)[0]?.name).toBe('Groceries');
+      expect(store.getState().data.lists[0]?.changedAt).toBe(time);
+    }
+  });
+
+  it('cannot edit or delete an Item that is already deleted, or undo one that is not', async () => {
+    const store = await groceries();
+    await store.getState().deleteItem('id-2');
+
+    await expect(store.getState().editItem('id-2', 'Milk', '')).rejects.toThrow();
+    await expect(store.getState().deleteItem('id-2')).rejects.toThrow();
+    await expect(store.getState().restoreItem('id-3')).rejects.toThrow();
+  });
+});

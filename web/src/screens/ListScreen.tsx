@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 import { formatAmount } from '../domain/amounts';
 import type { ItemRecord } from '../domain/records';
 import { itemSections, type ShoppingStore } from '../store/store';
 import { BackButton } from '../telegram/buttons';
-import { CheckIcon, PlusIcon } from '../ui/icons';
-import { AddItemRow } from './AddItemRow';
+import { CheckIcon, PencilIcon, PlusIcon, TrashIcon } from '../ui/icons';
+import { SwipeRow } from '../ui/SwipeRow';
+import { UndoToast } from '../ui/UndoToast';
+import { ItemFieldsRow } from './ItemFieldsRow';
 
 interface Props {
   store: ShoppingStore;
@@ -13,54 +15,118 @@ interface Props {
   onBack: () => void;
 }
 
-/** One Shopping List: To-buy on top, Bought below, and a row at the end of To-buy to add Items. */
+/** Which row has the name and Amount fields open: the add row, or an Item being edited. */
+type Fields = { kind: 'add' } | { kind: 'edit'; itemId: string } | null;
+
+/**
+ * One Shopping List: To-buy on top, Bought below, and a row at the end of To-buy to add Items.
+ * Tapping an Item's name edits it in place; swiping it left shows edit and delete.
+ */
 export function ListScreen({ store, listId, onBack }: Props) {
   const data = useStore(store, (state) => state.data);
   const list = data.lists.find((candidate) => candidate.id === listId && !candidate.deleted);
   const { toBuy, bought } = useMemo(() => itemSections(data, listId), [data, listId]);
-  const [adding, setAdding] = useState(false);
+  const [fields, setFields] = useState<Fields>(null);
+  const [swipedId, setSwipedId] = useState<string | null>(null);
   const [lastAdded, setLastAdded] = useState<string | null>(null);
+  const [deleted, setDeleted] = useState<{ id: string; name: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // A tap that closes a swiped row does only that; it doesn't also edit or tick an Item.
+  const closingTap = useRef(false);
 
-  async function setBought(item: ItemRecord, bought: boolean) {
+  async function run(change: () => Promise<void>) {
     try {
-      await store.getState().setBought(item.id, bought);
+      await change();
     } catch (cause) {
-      console.error('Could not tick the Item', cause);
+      console.error('Could not change the Item', cause);
       setError("Couldn't save the change. Try again.");
     }
   }
 
-  function stopAdding() {
-    setAdding(false);
+  function closeFields() {
+    setFields(null);
     setError(null);
+  }
+
+  function openFields(next: Fields) {
+    setSwipedId(null);
+    setError(null);
+    setFields(next);
+  }
+
+  function remove(item: ItemRecord) {
+    setSwipedId(null);
+    void run(async () => {
+      await store.getState().deleteItem(item.id);
+      setDeleted({ id: item.id, name: item.name });
+    });
+  }
+
+  function itemRow(item: ItemRecord) {
+    if (fields?.kind === 'edit' && fields.itemId === item.id) {
+      return (
+        <ItemFieldsRow
+          key={item.id}
+          initial={item}
+          onSubmit={(name, amount) => store.getState().editItem(item.id, name, amount)}
+          onSaved={closeFields}
+          onClose={closeFields}
+          onError={setError}
+        />
+      );
+    }
+    return (
+      <ItemRow
+        key={item.id}
+        item={item}
+        isNew={item.id === lastAdded}
+        swiped={swipedId === item.id}
+        onSwipe={(open) => {
+          setSwipedId(open ? item.id : null);
+        }}
+        onTick={() => {
+          if (!closingTap.current)
+            void run(() => store.getState().setBought(item.id, !item.bought));
+        }}
+        onEdit={() => {
+          if (!closingTap.current) openFields({ kind: 'edit', itemId: item.id });
+        }}
+        onDelete={() => {
+          remove(item);
+        }}
+      />
+    );
   }
 
   if (!list) return null;
 
   return (
-    <main className="screen">
-      {/* Back closes an open add row first, and only then leaves the list. */}
-      <BackButton onClick={adding ? stopAdding : onBack} />
+    <main
+      className="screen"
+      onPointerDownCapture={(event) => {
+        // A tap anywhere but the swiped row closes it.
+        closingTap.current = swipedId !== null;
+        if (swipedId === null) return;
+        const row = (event.target as Element).closest('[data-row-id]');
+        if (row?.getAttribute('data-row-id') !== swipedId) setSwipedId(null);
+        else closingTap.current = false;
+      }}
+    >
+      {/* Back closes an open row of fields first, and only then leaves the list. */}
+      <BackButton onClick={fields ? closeFields : onBack} />
       <h1 className="list-title">{list.name}</h1>
       <h2 className="section-header">To buy</h2>
       <ul className="rows item-rows">
-        {toBuy.map((item) => (
-          <ItemRow
-            key={item.id}
-            item={item}
-            isNew={item.id === lastAdded}
-            onTick={() => void setBought(item, true)}
-          />
-        ))}
-        {adding ? (
-          <AddItemRow
-            onAdd={async (name, amount) => {
+        {toBuy.map(itemRow)}
+        {fields?.kind === 'add' ? (
+          <ItemFieldsRow
+            onSubmit={async (name, amount) => {
               const result = await store.getState().addItem(listId, name, amount);
               if (result.ok) setLastAdded(result.id);
               return result;
             }}
-            onClose={stopAdding}
+            onSaved={() => undefined}
+            onClose={closeFields}
             onError={setError}
           />
         ) : (
@@ -69,7 +135,7 @@ export function ListScreen({ store, listId, onBack }: Props) {
               type="button"
               className="row add-item-button"
               onClick={() => {
-                setAdding(true);
+                openFields({ kind: 'add' });
               }}
             >
               <span className="plus" aria-hidden="true">
@@ -86,17 +152,22 @@ export function ListScreen({ store, listId, onBack }: Props) {
       {bought.length > 0 && (
         <>
           <h2 className="section-header">Bought</h2>
-          <ul className="rows item-rows bought">
-            {bought.map((item) => (
-              <ItemRow
-                key={item.id}
-                item={item}
-                isNew={false}
-                onTick={() => void setBought(item, false)}
-              />
-            ))}
-          </ul>
+          <ul className="rows item-rows bought">{bought.map(itemRow)}</ul>
         </>
+      )}
+      {deleted && (
+        <UndoToast
+          key={deleted.id}
+          text={`Deleted “${deleted.name}”`}
+          onUndo={() => {
+            const { id } = deleted;
+            setDeleted(null);
+            void run(() => store.getState().restoreItem(id));
+          }}
+          onExpire={() => {
+            setDeleted(null);
+          }}
+        />
       )}
     </main>
   );
@@ -105,27 +176,59 @@ export function ListScreen({ store, listId, onBack }: Props) {
 interface ItemRowProps {
   item: ItemRecord;
   isNew: boolean;
+  swiped: boolean;
+  onSwipe: (open: boolean) => void;
   /** Ticks the Item off, or unticks it if Bought. Only the checkbox does this, not the name. */
   onTick: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }
 
-function ItemRow({ item, isNew, onTick }: ItemRowProps) {
+function ItemRow({ item, isNew, swiped, onSwipe, onTick, onEdit, onDelete }: ItemRowProps) {
   return (
-    <li className={isNew ? 'row item new' : 'row item'}>
-      <button
-        type="button"
-        role="checkbox"
-        className="check-button"
-        aria-checked={item.bought}
-        aria-label={`Bought ${item.name}`}
-        onClick={onTick}
-      >
-        <span className={item.bought ? 'check checked' : 'check'} aria-hidden="true">
-          {item.bought && <CheckIcon />}
-        </span>
-      </button>
-      <span className="row-name">{item.name}</span>
-      {item.amount !== null && <span className="hint amount">{formatAmount(item.amount)}</span>}
-    </li>
+    <SwipeRow
+      id={item.id}
+      open={swiped}
+      onOpenChange={onSwipe}
+      actions={
+        <>
+          <button
+            type="button"
+            className="swipe-action rename"
+            aria-label={`Edit ${item.name}`}
+            onClick={onEdit}
+          >
+            <PencilIcon />
+          </button>
+          <button
+            type="button"
+            className="swipe-action delete"
+            aria-label={`Delete ${item.name}`}
+            onClick={onDelete}
+          >
+            <TrashIcon />
+          </button>
+        </>
+      }
+    >
+      <span className={isNew ? 'item-content new' : 'item-content'}>
+        <button
+          type="button"
+          role="checkbox"
+          className="check-button"
+          aria-checked={item.bought}
+          aria-label={`Bought ${item.name}`}
+          onClick={onTick}
+        >
+          <span className={item.bought ? 'check checked' : 'check'} aria-hidden="true">
+            {item.bought && <CheckIcon />}
+          </span>
+        </button>
+        <button type="button" className="item-name-button" onClick={onEdit}>
+          {item.name}
+        </button>
+        {item.amount !== null && <span className="hint amount">{formatAmount(item.amount)}</span>}
+      </span>
+    </SwipeRow>
   );
 }

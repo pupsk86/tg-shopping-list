@@ -33,12 +33,20 @@ export interface ShoppingState {
   addItem(listId: string, name: string, amount: string): Promise<AddItemResult>;
   /** Ticks an Item off as Bought, or unticks it. Its Shopping List counts as changed. */
   setBought(itemId: string, bought: boolean): Promise<void>;
+  /** Changes an Item's name and Amount by the same rules as adding. A blank Amount removes it. */
+  editItem(itemId: string, name: string, amount: string): Promise<EditItemResult>;
+  /** Sets the Item's "deleted" mark; nothing is erased (ADR 0002), so Undo can bring it back. */
+  deleteItem(itemId: string): Promise<void>;
+  /** Undo for deleteItem: clears the mark, and the Item returns to its place in the order added. */
+  restoreItem(itemId: string): Promise<void>;
 }
 
-export type AddItemResult =
-  | { ok: true; id: string }
+export type ItemFieldsError =
   | { ok: false; field: 'name'; error: NameError }
   | { ok: false; field: 'amount'; error: AmountError };
+
+export type AddItemResult = { ok: true; id: string } | ItemFieldsError;
+export type EditItemResult = { ok: true } | ItemFieldsError;
 
 export type ShoppingStore = StoreApi<ShoppingState>;
 
@@ -131,10 +139,9 @@ export function createShoppingStore({
       },
 
       async addItem(listId, rawName, rawAmount) {
-        const name = parseName(rawName);
-        if (!name.ok) return { ok: false, field: 'name', error: name.error };
-        const amount = parseAmount(rawAmount);
-        if (!amount.ok) return { ok: false, field: 'amount', error: amount.error };
+        const fields = parseItemFields(rawName, rawAmount);
+        if (!fields.ok) return fields;
+        const { name, amount } = fields;
         const id = newId();
         await commit((data) => {
           liveList(data, listId);
@@ -142,8 +149,8 @@ export function createShoppingStore({
           const item: ItemRecord = {
             id,
             listId,
-            name: name.value,
-            amount: amount.value,
+            name,
+            amount,
             bought: false,
             createdAt: changedAt,
             changedAt,
@@ -158,17 +165,27 @@ export function createShoppingStore({
       },
 
       async setBought(itemId, bought) {
+        await commit((data) => changeItem(data, liveItem(data, itemId), { bought }, now()));
+      },
+
+      async editItem(itemId, rawName, rawAmount) {
+        const fields = parseItemFields(rawName, rawAmount);
+        if (!fields.ok) return fields;
+        const { name, amount } = fields;
+        await commit((data) => changeItem(data, liveItem(data, itemId), { name, amount }, now()));
+        return { ok: true };
+      },
+
+      async deleteItem(itemId) {
+        await commit((data) => changeItem(data, liveItem(data, itemId), { deleted: true }, now()));
+      },
+
+      async restoreItem(itemId) {
         await commit((data) => {
-          const item = liveItem(data, itemId);
-          const changedAt = now();
-          return {
-            lists: data.lists.map((list) =>
-              list.id === item.listId ? { ...list, changedAt } : list,
-            ),
-            items: data.items.map((candidate) =>
-              candidate.id === itemId ? { ...candidate, bought, changedAt } : candidate,
-            ),
-          };
+          const item = data.items.find((candidate) => candidate.id === itemId && candidate.deleted);
+          if (!item) throw new Error(`No deleted Item ${itemId}`);
+          liveList(data, item.listId);
+          return changeItem(data, item, { deleted: false }, now());
         });
       },
     };
@@ -180,6 +197,32 @@ function liveList(data: ShoppingData, id: string): ShoppingListRecord {
   const list = data.lists.find((candidate) => candidate.id === id && !candidate.deleted);
   if (!list) throw new Error(`No Shopping List ${id}`);
   return list;
+}
+
+function parseItemFields(
+  rawName: string,
+  rawAmount: string,
+): { ok: true; name: string; amount: number | null } | ItemFieldsError {
+  const name = parseName(rawName);
+  if (!name.ok) return { ok: false, field: 'name', error: name.error };
+  const amount = parseAmount(rawAmount);
+  if (!amount.ok) return { ok: false, field: 'amount', error: amount.error };
+  return { ok: true, name: name.value, amount: amount.value };
+}
+
+/** Changes one Item; its Shopping List counts as changed too, so it moves to the top of Lists. */
+function changeItem(
+  data: ShoppingData,
+  item: ItemRecord,
+  change: Partial<Pick<ItemRecord, 'name' | 'amount' | 'bought' | 'deleted'>>,
+  changedAt: number,
+): ShoppingData {
+  return {
+    lists: data.lists.map((list) => (list.id === item.listId ? { ...list, changedAt } : list)),
+    items: data.items.map((candidate) =>
+      candidate.id === item.id ? { ...candidate, ...change, changedAt } : candidate,
+    ),
+  };
 }
 
 /** The Item with this id, which must exist and not be deleted, on a Shopping List that isn't. */
