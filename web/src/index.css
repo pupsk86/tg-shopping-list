@@ -61,6 +61,8 @@ button.primary {
   padding: 0;
   border-radius: 12px;
   overflow: hidden;
+  /* Safari on iOS lets a sliding row's buttons escape the rounded corners while they move; a clip path holds them in. */
+  clip-path: inset(0 round 12px);
   background: var(--tg-theme-secondary-bg-color, #f1f1f1);
 }
 
