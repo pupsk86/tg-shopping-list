@@ -131,7 +131,7 @@
   // PROTOTYPE for #12: three ways to edit or delete an Item. In memory only.
   const COMMON = 'Tap an Item\'s <strong>name</strong> to edit it. Delete is immediate, with an <strong>Undo</strong> toast for 5 seconds. Back leaves without saving.';
   const VARIANTS = {
-    a: { key: 'A', name: 'Edit in the row', note: '<strong>Swipe an Item left</strong> for a pencil and a trash, as on Lists; the trash deletes straight away. The pencil, or tapping the name, turns the row into <strong>the same row as Add item</strong>: the blue tick or Return saves, the red minus closes it without saving. Tapping outside leaves a row with text open and closes an empty one. ' + COMMON },
+    a: { key: 'A', name: 'Edit in the row', note: '<strong>Swipe an Item left</strong> for a pencil and a trash, as on Lists; the trash deletes straight away. The pencil, or tapping the name, turns the row into <strong>the same row as Add item</strong>: the blue tick or Return saves, the red minus closes it without saving. Tapping outside closes a row you have not changed (or an empty one) and leaves a row with a change open. ' + COMMON },
     b: { key: 'B', name: 'Edit screen', note: 'A screen of its own with the name and Amount, Telegram\'s bottom button reading <strong>Save</strong>, and a red <strong>Delete item</strong> row. ' + COMMON },
     c: { key: 'C', name: 'Sheet', note: 'A sheet slides up over the list with the name and Amount, <strong>Save</strong> at the top right and <strong>Delete item</strong> below. Tapping the dimmed list closes it. ' + COMMON },
   };
@@ -291,6 +291,9 @@
     const amountEl = document.getElementById('e-amount');
     const errorEl = document.getElementById('e-error');
     const isEmpty = () => !nameEl.value.trim() && !amountEl.value.trim();
+    // Untouched means just as the row opened: empty when adding, the old values when editing.
+    const opened = [nameEl.value, amountEl.value];
+    const untouched = () => nameEl.value.trim() === opened[0].trim() && amountEl.value.trim() === opened[1].trim();
     const submit = () => {
       const e = adding ? addNew(nameEl.value, amountEl.value) : save(nameEl.value, amountEl.value);
       if (e) errorEl.textContent = e;
@@ -303,10 +306,11 @@
     [nameEl, amountEl].forEach((el) => { el.oninput = () => { errorEl.textContent = ''; }; });
     nameEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (isEmpty()) cancel('Return on an empty row closed it.'); else submit(); } };
     amountEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } };
-    // Leaving an empty row closes it; a row with something typed stays open.
+    // Leaving a row closes it if nothing was changed since it opened, or if it is empty.
+    // A row with a change typed in stays open, so nothing is lost or saved by accident.
     row.addEventListener('focusout', () => setTimeout(() => {
       if ((editing === null && !adding) || row.contains(document.activeElement)) return;
-      if (isEmpty()) cancel('Tapped outside an empty row, so it closed without saving.');
+      if (untouched() || isEmpty()) cancel('Tapped outside a row with no changes, so it closed.');
     }, 0));
   }
   function addNew(rawName, rawAmount) {
