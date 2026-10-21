@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 import { listSummaries, type ShoppingStore } from '../store/store';
 import { MainButton } from '../telegram/buttons';
@@ -9,14 +9,17 @@ import { SwipeRow } from '../ui/SwipeRow';
 interface Props {
   store: ShoppingStore;
   onCreate: () => void;
+  onOpen: (listId: string) => void;
   onRename: (listId: string) => void;
 }
 
-export function ListsScreen({ store, onCreate, onRename }: Props) {
+export function ListsScreen({ store, onCreate, onOpen, onRename }: Props) {
   const data = useStore(store, (state) => state.data);
   const lists = useMemo(() => listSummaries(data), [data]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // A tap that closes an open row does only that; it doesn't also open a list.
+  const closingTap = useRef(false);
 
   async function remove(listId: string, name: string) {
     const confirmed = await confirmDestructive({
@@ -52,6 +55,7 @@ export function ListsScreen({ store, onCreate, onRename }: Props) {
       className="screen"
       onPointerDownCapture={(event) => {
         // A tap anywhere but the open row closes it.
+        closingTap.current = openId !== null;
         if (openId === null) return;
         const row = (event.target as Element).closest('[data-row-id]');
         if (row?.getAttribute('data-row-id') !== openId) setOpenId(null);
@@ -66,6 +70,9 @@ export function ListsScreen({ store, onCreate, onRename }: Props) {
             open={openId === list.id}
             onOpenChange={(open) => {
               setOpenId(open ? list.id : null);
+            }}
+            onTap={() => {
+              if (!closingTap.current) onOpen(list.id);
             }}
             actions={
               <>

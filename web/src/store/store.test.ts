@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { memoryKeyValue, type KeyValueStore } from '../storage/keyValue';
 import { createStorage } from '../storage/storage';
-import { createShoppingStore, listSummaries } from './store';
+import { createShoppingStore, itemSections, listSummaries } from './store';
 
 let backend: KeyValueStore;
 let clock: number;
@@ -247,5 +247,164 @@ describe('deleting a Shopping List', () => {
     await expect(store.getState().renameList('id-1', 'Back')).rejects.toThrow();
     await expect(store.getState().deleteList('id-1')).rejects.toThrow();
     expect(shownLists(await openApp())).toEqual([]);
+  });
+});
+
+describe('adding Items', () => {
+  function shownItems(store: Awaited<ReturnType<typeof openApp>>, listId = 'id-1') {
+    return itemSections(store.getState().data, listId).toBuy.map((item) => [
+      item.name,
+      item.amount,
+    ]);
+  }
+
+  it('adds Items to the bottom of To-buy in the order added, with or without an Amount', async () => {
+    const store = await openApp();
+    await store.getState().createList('Groceries');
+    clock = 2000;
+
+    expect(await store.getState().addItem('id-1', ' Milk ', '')).toEqual({ ok: true, id: 'id-2' });
+    clock = 3000;
+    await store.getState().addItem('id-1', 'Apples', '1,5');
+    clock = 4000;
+    await store.getState().addItem('id-1', 'Eggs', '10');
+
+    expect(shownItems(store)).toEqual([
+      ['Milk', null],
+      ['Apples', 1.5],
+      ['Eggs', 10],
+    ]);
+    expect(itemSections(store.getState().data, 'id-1').bought).toEqual([]);
+  });
+
+  it('allows duplicate Items', async () => {
+    const store = await openApp();
+    await store.getState().createList('Groceries');
+    await store.getState().addItem('id-1', 'Milk', '');
+    await store.getState().addItem('id-1', 'Milk', '');
+
+    expect(shownItems(store)).toEqual([
+      ['Milk', null],
+      ['Milk', null],
+    ]);
+  });
+
+  it('keeps each Shopping List’s Items apart', async () => {
+    const store = await openApp();
+    await store.getState().createList('Groceries');
+    await store.getState().createList('Hardware store');
+    await store.getState().addItem('id-1', 'Milk', '');
+    await store.getState().addItem('id-2', 'Nails', '100');
+
+    expect(shownItems(store, 'id-1')).toEqual([['Milk', null]]);
+    expect(shownItems(store, 'id-2')).toEqual([['Nails', 100]]);
+  });
+
+  it('rejects a bad name or Amount, saying which, and adds nothing', async () => {
+    const store = await openApp();
+    await store.getState().createList('Groceries');
+
+    expect(await store.getState().addItem('id-1', ' ', '2')).toEqual({
+      ok: false,
+      field: 'name',
+      error: 'empty',
+    });
+    expect(await store.getState().addItem('id-1', 'a'.repeat(101), '')).toEqual({
+      ok: false,
+      field: 'name',
+      error: 'tooLong',
+    });
+    expect(await store.getState().addItem('id-1', 'Milk', '0')).toEqual({
+      ok: false,
+      field: 'amount',
+      error: 'notPositive',
+    });
+    expect(await store.getState().addItem('id-1', 'Milk', '1.234')).toEqual({
+      ok: false,
+      field: 'amount',
+      error: 'tooManyDecimals',
+    });
+    expect(await store.getState().addItem('id-1', 'Milk', 'abc')).toEqual({
+      ok: false,
+      field: 'amount',
+      error: 'notANumber',
+    });
+    expect(shownItems(store)).toEqual([]);
+    expect(shownItems(await openApp())).toEqual([]);
+  });
+
+  it('moves the Shopping List to the top and counts the Item as left to buy', async () => {
+    const store = await openApp();
+    await store.getState().createList('Groceries');
+    clock = 2000;
+    await store.getState().createList('Hardware store');
+    clock = 3000;
+
+    await store.getState().addItem('id-1', 'Milk', '');
+    await store.getState().addItem('id-1', 'Eggs', '10');
+
+    expect(shownLists(store)).toEqual([
+      { id: 'id-1', name: 'Groceries', leftToBuy: 2 },
+      { id: 'id-2', name: 'Hardware store', leftToBuy: 0 },
+    ]);
+  });
+
+  it('keeps the Items, their order and Amounts after the app is opened again', async () => {
+    const store = await openApp();
+    await store.getState().createList('Groceries');
+    for (const [name, amount] of [
+      ['Milk', ''],
+      ['Apples', '1,5'],
+      ['Eggs', '10'],
+      ['Flour', '0.25'],
+    ] as const) {
+      clock += 1;
+      await store.getState().addItem('id-1', name, amount);
+    }
+
+    expect(shownItems(await openApp())).toEqual([
+      ['Milk', null],
+      ['Apples', 1.5],
+      ['Eggs', 10],
+      ['Flour', 0.25],
+    ]);
+  });
+
+  it('keeps the order of Items added in the same millisecond', async () => {
+    const store = await openApp();
+    await store.getState().createList('Groceries');
+    await Promise.all(['A', 'B', 'C'].map((name) => store.getState().addItem('id-1', name, '')));
+
+    expect(shownItems(await openApp()).map(([name]) => name)).toEqual(['A', 'B', 'C']);
+  });
+
+  it('saves the Item with a UUID, its Shopping List, times and marks', async () => {
+    const store = createShoppingStore({ storage: createStorage(backend), now: () => 1234 });
+    await store.getState().load();
+    const created = await store.getState().createList('Groceries');
+    if (!created.ok) throw new Error('not created');
+    await store.getState().addItem(created.id, 'Milk', '2');
+
+    expect(store.getState().data.items).toEqual([
+      {
+        id: expect.stringMatching(/^[0-9a-f-]{36}$/) as unknown,
+        listId: created.id,
+        name: 'Milk',
+        amount: 2,
+        bought: false,
+        createdAt: 1234,
+        changedAt: 1234,
+        deleted: false,
+      },
+    ]);
+  });
+
+  it('cannot add to a Shopping List that is deleted', async () => {
+    const store = await openApp();
+    await store.getState().createList('Groceries');
+    await store.getState().deleteList('id-1');
+
+    await expect(store.getState().addItem('id-1', 'Milk', '')).rejects.toThrow();
+    expect(store.getState().data.items).toEqual([]);
   });
 });

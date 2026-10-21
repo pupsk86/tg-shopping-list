@@ -23,3 +23,27 @@ export function TrashIcon() {
     </svg>
   );
 }
+
+export function CheckIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
+  );
+}
+
+export function MinusIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M6 12h12" />
+    </svg>
+  );
+}
+
+export function PlusIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M12 6v12M6 12h12" />
+    </svg>
+  );
+}

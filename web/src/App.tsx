@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import { useStore } from 'zustand';
+import { ListScreen } from './screens/ListScreen';
 import { ListsScreen } from './screens/ListsScreen';
 import { NewListScreen } from './screens/NewListScreen';
 import { RenameListScreen } from './screens/RenameListScreen';
 import type { ShoppingStore } from './store/store';
 
-type Screen = { name: 'lists' } | { name: 'newList' } | { name: 'renameList'; listId: string };
+type Screen =
+  | { name: 'lists' }
+  | { name: 'list'; listId: string }
+  | { name: 'newList' }
+  | { name: 'renameList'; listId: string };
 
 export function App({ store }: { store: ShoppingStore }) {
   const status = useStore(store, (state) => state.status);
@@ -46,11 +51,16 @@ function ReadyApp({ store, screen, setScreen }: ReadyProps) {
           onCreate={() => {
             setScreen({ name: 'newList' });
           }}
+          onOpen={(listId) => {
+            setScreen({ name: 'list', listId });
+          }}
           onRename={(listId) => {
             setScreen({ name: 'renameList', listId });
           }}
         />
       );
+    case 'list':
+      return <ListScreen store={store} listId={screen.listId} onBack={toLists} />;
     case 'newList':
       return <NewListScreen store={store} onDone={toLists} />;
     case 'renameList':

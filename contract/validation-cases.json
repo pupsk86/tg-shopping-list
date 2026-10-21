@@ -62,5 +62,140 @@
         "error": "tooLong"
       }
     ]
+  },
+  "amount": {
+    "rule": "An Item's optional Amount. Spaces, tabs and line breaks at both ends are removed; nothing left means no Amount (null). Otherwise: digits, optionally followed by a comma or a dot and up to 2 more digits; the value must be above 0. No plus sign, thousands separators or exponents.",
+    "errors": {
+      "notANumber": "not digits with an optional comma or dot and digits after it",
+      "notPositive": "0 or below",
+      "tooManyDecimals": "more than 2 digits after the comma or dot"
+    },
+    "cases": [
+      {
+        "input": "",
+        "valid": true,
+        "value": null
+      },
+      {
+        "input": "   ",
+        "valid": true,
+        "value": null
+      },
+      {
+        "input": "2",
+        "valid": true,
+        "value": 2
+      },
+      {
+        "input": " 10 ",
+        "valid": true,
+        "value": 10
+      },
+      {
+        "input": "1,5",
+        "valid": true,
+        "value": 1.5
+      },
+      {
+        "input": "1.5",
+        "valid": true,
+        "value": 1.5
+      },
+      {
+        "input": "0.25",
+        "valid": true,
+        "value": 0.25
+      },
+      {
+        "input": "0,01",
+        "valid": true,
+        "value": 0.01
+      },
+      {
+        "input": "007",
+        "valid": true,
+        "value": 7
+      },
+      {
+        "input": "2.50",
+        "valid": true,
+        "value": 2.5
+      },
+      {
+        "input": "0",
+        "valid": false,
+        "error": "notPositive"
+      },
+      {
+        "input": "0,00",
+        "valid": false,
+        "error": "notPositive"
+      },
+      {
+        "input": "-1",
+        "valid": false,
+        "error": "notPositive"
+      },
+      {
+        "input": "-0.5",
+        "valid": false,
+        "error": "notPositive"
+      },
+      {
+        "input": "1.234",
+        "valid": false,
+        "error": "tooManyDecimals"
+      },
+      {
+        "input": "0,001",
+        "valid": false,
+        "error": "tooManyDecimals"
+      },
+      {
+        "input": "abc",
+        "valid": false,
+        "error": "notANumber"
+      },
+      {
+        "input": "1,",
+        "valid": false,
+        "error": "notANumber"
+      },
+      {
+        "input": ".5",
+        "valid": false,
+        "error": "notANumber"
+      },
+      {
+        "input": "1.5.2",
+        "valid": false,
+        "error": "notANumber"
+      },
+      {
+        "input": "1 000",
+        "valid": false,
+        "error": "notANumber"
+      },
+      {
+        "input": "1,000.5",
+        "valid": false,
+        "error": "notANumber"
+      },
+      {
+        "input": "+2",
+        "valid": false,
+        "error": "notANumber"
+      },
+      {
+        "input": "1e3",
+        "valid": false,
+        "error": "notANumber"
+      },
+      {
+        "input": "2 kg",
+        "valid": false,
+        "error": "notANumber"
+      }
+    ]
   }
 }

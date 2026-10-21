@@ -1,6 +1,12 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
+import { parseAmount, type AmountError } from '../domain/amounts';
 import { parseName, type NameError } from '../domain/names';
-import { emptyData, type ShoppingData, type ShoppingListRecord } from '../domain/records';
+import {
+  emptyData,
+  type ItemRecord,
+  type ShoppingData,
+  type ShoppingListRecord,
+} from '../domain/records';
 import type { ShoppingStorage } from '../storage/storage';
 
 export type Status =
@@ -20,7 +26,17 @@ export interface ShoppingState {
   renameList(id: string, name: string): Promise<{ ok: true } | { ok: false; error: NameError }>;
   /** Sets the "deleted" mark on the Shopping List and its Items; nothing is erased (ADR 0002). */
   deleteList(id: string): Promise<void>;
+  /**
+   * Adds an Item at the bottom of the To-buy section. A blank Amount means none. The Shopping List
+   * counts as changed, so it moves to the top of Lists.
+   */
+  addItem(listId: string, name: string, amount: string): Promise<AddItemResult>;
 }
+
+export type AddItemResult =
+  | { ok: true; id: string }
+  | { ok: false; field: 'name'; error: NameError }
+  | { ok: false; field: 'amount'; error: AmountError };
 
 export type ShoppingStore = StoreApi<ShoppingState>;
 
@@ -111,6 +127,33 @@ export function createShoppingStore({
           };
         });
       },
+
+      async addItem(listId, rawName, rawAmount) {
+        const name = parseName(rawName);
+        if (!name.ok) return { ok: false, field: 'name', error: name.error };
+        const amount = parseAmount(rawAmount);
+        if (!amount.ok) return { ok: false, field: 'amount', error: amount.error };
+        const id = newId();
+        await commit((data) => {
+          liveList(data, listId);
+          const changedAt = now();
+          const item: ItemRecord = {
+            id,
+            listId,
+            name: name.value,
+            amount: amount.value,
+            bought: false,
+            createdAt: changedAt,
+            changedAt,
+            deleted: false,
+          };
+          return {
+            lists: data.lists.map((list) => (list.id === listId ? { ...list, changedAt } : list)),
+            items: [...data.items, item],
+          };
+        });
+        return { ok: true, id };
+      },
     };
   });
 }
@@ -140,4 +183,20 @@ export function listSummaries(data: ShoppingData): ListSummary[] {
         (item) => item.listId === list.id && !item.deleted && !item.bought,
       ).length,
     }));
+}
+
+export interface ItemSections {
+  toBuy: ItemRecord[];
+  bought: ItemRecord[];
+}
+
+/** What the List screen shows: the Shopping List's Items not deleted, each section in the order added. */
+export function itemSections(data: ShoppingData, listId: string): ItemSections {
+  const items = data.items
+    .filter((item) => item.listId === listId && !item.deleted)
+    .sort((a, b) => a.createdAt - b.createdAt);
+  return {
+    toBuy: items.filter((item) => !item.bought),
+    bought: items.filter((item) => item.bought),
+  };
 }
