@@ -64,8 +64,10 @@
   .round svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
   .round.save { width: 30px; height: 30px; background: var(--button); color: var(--button-text); }
   .round.save svg { width: 16px; height: 16px; stroke-width: 2.4; }
-  .round.trash { width: 22px; height: 22px; background: var(--destructive); color: #fff; }
-  .round.trash svg { width: 13px; height: 13px; stroke-width: 2.2; }
+  .round.close { width: 22px; height: 22px; background: var(--destructive); color: #fff; }
+  .round.close svg { width: 12px; height: 12px; stroke-width: 2.6; }
+  .add-row { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 16px; border: none; background: none; width: 100%; color: var(--link); cursor: pointer; text-align: left; }
+  .plus { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--link); color: var(--section); display: grid; place-items: center; font-size: 18px; line-height: 1; }
 
   /* A: swipe left for pencil and trash, as on Lists */
   .swipe { position: relative; overflow: hidden; }
@@ -129,7 +131,7 @@
   // PROTOTYPE for #12: three ways to edit or delete an Item. In memory only.
   const COMMON = 'Tap an Item\'s <strong>name</strong> to edit it. Delete is immediate, with an <strong>Undo</strong> toast for 5 seconds. Back leaves without saving.';
   const VARIANTS = {
-    a: { key: 'A', name: 'Edit in the row', note: '<strong>Swipe an Item left</strong> for a pencil and a trash, as on Lists; the trash deletes straight away. The pencil, or tapping the name, turns the row into fields like the add row: the blue tick saves, the red trash at the start deletes. Return saves; tapping outside leaves it unchanged. ' + COMMON },
+    a: { key: 'A', name: 'Edit in the row', note: '<strong>Swipe an Item left</strong> for a pencil and a trash, as on Lists; the trash deletes straight away. The pencil, or tapping the name, turns the row into <strong>the same row as Add item</strong>: the blue tick or Return saves, the red minus closes it without saving. Tapping outside leaves a row with text open and closes an empty one. ' + COMMON },
     b: { key: 'B', name: 'Edit screen', note: 'A screen of its own with the name and Amount, Telegram\'s bottom button reading <strong>Save</strong>, and a red <strong>Delete item</strong> row. ' + COMMON },
     c: { key: 'C', name: 'Sheet', note: 'A sheet slides up over the list with the name and Amount, <strong>Save</strong> at the top right and <strong>Delete item</strong> below. Tapping the dimmed list closes it. ' + COMMON },
   };
@@ -143,6 +145,7 @@
   let items = START.map((i) => ({ ...i, deleted: false }));
   let variant = ORDER.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'a';
   let editing = null; // id of the Item being edited
+  let adding = false; // A only: the Add item row is open
   let flash = null;
   let lastAction = 'Nothing yet.';
   let toast = null; // { id, timer }
@@ -156,7 +159,7 @@
   const PENCIL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
   const BIG_TRASH = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4.5h6V7"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/></svg>';
   const SWIPE_WIDTH = 128;
-  const TRASH = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13"/></svg>';
+  const MINUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg>';
 
   // The same rules the app uses when adding.
   function parse(rawName, rawAmount) {
@@ -184,7 +187,7 @@
     flash = it.id; editing = null; render();
     return null;
   }
-  function cancel(why) { editing = null; lastAction = why; render(); }
+  function cancel(why) { editing = null; adding = false; lastAction = why; render(); }
   function remove(id = editing) {
     const it = item(id);
     it.deleted = true; editing = null;
@@ -209,12 +212,7 @@
 
   function rowHtml(i) {
     if (variant === 'a' && editing === i.id) {
-      return `<li class="row inline" id="edit-row">
-        <button type="button" class="round trash" id="e-delete" aria-label="Delete ${esc(i.name)}">${TRASH}</button>
-        <input class="in-name" id="e-name" value="${esc(i.name)}" aria-label="Item name" enterkeyhint="done" autocomplete="off">
-        <input class="in-amount" id="e-amount" value="${i.amount === null ? '' : fmt(i.amount)}" placeholder="Amount" aria-label="Amount" inputmode="decimal" enterkeyhint="done" autocomplete="off">
-        <button type="button" class="round save" id="e-save" aria-label="Save">${TICK}</button>
-      </li>`;
+      return fieldsRowHtml(i.name, i.amount === null ? '' : fmt(i.amount));
     }
     const content = `<span class="check" aria-hidden="true"></span>
       <button type="button" class="name" data-id="${i.id}">${esc(i.name)}</button>
@@ -230,6 +228,19 @@
     }
     return `<li class="row${flash === i.id ? ' flash' : ''}">${content}</li>`;
   }
+  // One row for both adding and editing, as the app would reuse one component.
+  function fieldsRowHtml(name, amount) {
+    return `<li class="row inline" id="edit-row">
+      <button type="button" class="round close" id="e-close" aria-label="Close without saving">${MINUS}</button>
+      <input class="in-name" id="e-name" value="${esc(name)}" placeholder="Item" aria-label="Item name" enterkeyhint="done" autocomplete="off">
+      <input class="in-amount" id="e-amount" value="${esc(amount)}" placeholder="Amount" aria-label="Amount" inputmode="decimal" enterkeyhint="done" autocomplete="off">
+      <button type="button" class="round save" id="e-save" aria-label="Save">${TICK}</button>
+    </li>`;
+  }
+  function addRowHtml() {
+    if (variant !== 'a') return '';
+    return adding ? fieldsRowHtml('', '') : '<li><button type="button" class="add-row" id="add-open"><span class="plus" aria-hidden="true">+</span>Add item</button></li>';
+  }
   function footer() {
     const live = items.filter((i) => !i.deleted);
     return `<p class="log">Last action: ${esc(lastAction)}\nTo buy: ${esc(live.map(label).join(', ') || 'nothing')}</p>
@@ -240,7 +251,7 @@
       <button type="button" class="back" id="back">‹ Back</button>
       <h1>Groceries</h1>
       <h2 class="section-header">To buy</h2>
-      <ul class="rows">${items.filter((i) => !i.deleted).map(rowHtml).join('')}</ul>
+      <ul class="rows">${items.filter((i) => !i.deleted).map(rowHtml).join('')}${addRowHtml()}</ul>
       <p class="error" id="e-error" role="alert"></p>
       ${footer()}`;
   }
@@ -261,30 +272,51 @@
     if (variant === 'b' && editing !== null) renderScreen();
     else {
       app.innerHTML = listHtml();
-      document.getElementById('back').onclick = () => { if (editing !== null) cancel('Back closed the edit without saving.'); else lastAction = 'Back would return to Lists.'; render(); };
-      app.querySelectorAll('.name').forEach((b) => { b.onclick = () => { editing = Number(b.dataset.id); flash = null; render(); }; });
+      document.getElementById('back').onclick = () => { if (editing !== null || adding) cancel('Back closed the edit without saving.'); else lastAction = 'Back would return to Lists.'; render(); };
+      app.querySelectorAll('.name').forEach((b) => { b.onclick = () => { editing = Number(b.dataset.id); adding = false; flash = null; render(); }; });
+      const addOpen = document.getElementById('add-open');
+      if (addOpen) addOpen.onclick = () => { adding = true; editing = null; render(); };
       if (variant === 'a') app.querySelectorAll('.swipe').forEach(wireSwipe);
-      if (variant === 'a' && editing !== null) wireInline();
+      if (variant === 'a' && (editing !== null || adding)) wireInline();
       if (variant === 'c' && editing !== null) renderSheet();
     }
-    document.getElementById('reset').onclick = () => { items = START.map((i) => ({ ...i, deleted: false })); editing = null; lastAction = 'Reset.'; render(); };
+    document.getElementById('reset').onclick = () => { items = START.map((i) => ({ ...i, deleted: false })); editing = null; adding = false; lastAction = 'Reset.'; render(); };
     flash = null;
   }
 
+  // The shared row: the same rules whether it adds a new Item or saves an edit.
   function wireInline() {
     const row = document.getElementById('edit-row');
     const nameEl = document.getElementById('e-name');
     const amountEl = document.getElementById('e-amount');
-    const submit = wireFields(nameEl, amountEl, document.getElementById('e-error'));
+    const errorEl = document.getElementById('e-error');
+    const isEmpty = () => !nameEl.value.trim() && !amountEl.value.trim();
+    const submit = () => {
+      const e = adding ? addNew(nameEl.value, amountEl.value) : save(nameEl.value, amountEl.value);
+      if (e) errorEl.textContent = e;
+    };
     nameEl.focus(); nameEl.setSelectionRange(nameEl.value.length, nameEl.value.length);
-    // Tapping these must not take focus from the fields.
-    ['e-save', 'e-delete'].forEach((id) => { document.getElementById(id).onpointerdown = (e) => e.preventDefault(); });
+    // Tapping these must not take focus from the fields, so the keyboard stays up.
+    ['e-save', 'e-close'].forEach((id) => { document.getElementById(id).onpointerdown = (e) => e.preventDefault(); });
     document.getElementById('e-save').onclick = submit;
-    document.getElementById('e-delete').onclick = () => remove();
+    document.getElementById('e-close').onclick = () => cancel('Minus closed the row without saving.');
+    [nameEl, amountEl].forEach((el) => { el.oninput = () => { errorEl.textContent = ''; }; });
+    nameEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (isEmpty()) cancel('Return on an empty row closed it.'); else submit(); } };
+    amountEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } };
+    // Leaving an empty row closes it; a row with something typed stays open.
     row.addEventListener('focusout', () => setTimeout(() => {
-      if (editing === null || row.contains(document.activeElement)) return;
-      cancel('Tapped outside, so the edit closed without saving.');
+      if ((editing === null && !adding) || row.contains(document.activeElement)) return;
+      if (isEmpty()) cancel('Tapped outside an empty row, so it closed without saving.');
     }, 0));
+  }
+  function addNew(rawName, rawAmount) {
+    const r = parse(rawName, rawAmount);
+    if (r.error) return r.error;
+    const it = { id: Math.max(0, ...items.map((i) => i.id)) + 1, name: r.name, amount: r.amount, deleted: false };
+    items.push(it);
+    lastAction = `Added "${label(it)}".`;
+    flash = it.id; render(); // the row stays open and clears for the next Item
+    return null;
   }
 
   // Swipe left to show the pencil and trash; one row open at a time; a tap elsewhere closes it.
@@ -407,7 +439,7 @@
 
   function go(step) {
     variant = ORDER[(ORDER.indexOf(variant) + step + ORDER.length) % ORDER.length];
-    editing = null; lastAction = 'Nothing yet.';
+    editing = null; adding = false; lastAction = 'Nothing yet.';
     try { history.replaceState(null, '', '#' + variant); } catch (e) {}
     render();
   }
