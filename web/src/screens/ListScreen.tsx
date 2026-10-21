@@ -34,8 +34,8 @@ export function ListScreen({ store, listId, onBack }: Props) {
   // A tap that closes a swiped row does only that; it doesn't also edit or tick an Item.
   const closingTap = useRef(false);
   const tapStart = useRef<{ x: number; y: number } | null>(null);
-  // Set when a tap was already handled as it ended, so its click (if it comes at all) does nothing.
-  const tapHandled = useRef(false);
+  // When a tap was last handled as it ended, so its click (if it comes at all) does nothing.
+  const tapHandledAt = useRef(-Infinity);
 
   async function run(change: () => Promise<void>) {
     try {
@@ -118,29 +118,25 @@ export function ListScreen({ store, listId, onBack }: Props) {
       onPointerUpCapture={(event) => {
         // While a row of fields is open, a tap outside it is handled as the finger lifts, not on
         // click: on iOS the keyboard going away moves the page, and the click then misses or never
-        // comes. A tap on another Item's name or pencil, or on Add item, opens that row instead;
-        // any other tap just closes the open one.
+        // comes. The open row closes, and a tapped button (another Item's name, pencil, delete,
+        // checkbox, Add item) is pressed right away.
         const start = tapStart.current;
         tapStart.current = null;
         if (!fields || !start) return;
         if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 10) return;
         const target = event.target as Element;
         if (target.closest('.item-fields')) return;
-        const editId = target.closest('[data-edit-item]')?.getAttribute('data-edit-item');
-        if (editId) openFields({ kind: 'edit', itemId: editId });
-        else if (target.closest('.add-item-button')) openFields({ kind: 'add' });
-        else {
-          closeFields();
-          return;
-        }
-        tapHandled.current = true;
-        setTimeout(() => {
-          tapHandled.current = false;
-        }, 500);
+        // An earlier tap's click may never have come; this tap's press must not be taken for it.
+        tapHandledAt.current = -Infinity;
+        closeFields();
+        const button = target.closest('button');
+        if (!button) return;
+        button.click();
+        tapHandledAt.current = event.timeStamp;
       }}
       onClickCapture={(event) => {
-        if (!tapHandled.current) return;
-        tapHandled.current = false;
+        if (event.timeStamp - tapHandledAt.current > 500) return;
+        tapHandledAt.current = -Infinity;
         event.stopPropagation();
         event.preventDefault();
       }}
@@ -229,7 +225,6 @@ function ItemRow({ item, isNew, swiped, onSwipe, onTick, onEdit, onDelete }: Ite
             type="button"
             className="swipe-action rename"
             aria-label={`Edit ${item.name}`}
-            data-edit-item={item.id}
             onClick={onEdit}
           >
             <PencilIcon />
@@ -258,12 +253,7 @@ function ItemRow({ item, isNew, swiped, onSwipe, onTick, onEdit, onDelete }: Ite
             {item.bought && <CheckIcon />}
           </span>
         </button>
-        <button
-          type="button"
-          className="item-name-button"
-          data-edit-item={item.id}
-          onClick={onEdit}
-        >
+        <button type="button" className="item-name-button" onClick={onEdit}>
           {item.name}
         </button>
         {item.amount !== null && <span className="hint amount">{formatAmount(item.amount)}</span>}
