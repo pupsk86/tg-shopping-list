@@ -68,3 +68,4 @@ Ideas agreed as worth doing, with no release assigned yet.
 - Filter offensive Shopping List and Item names.
 - Rate limiting on the API and other anti-spam measures.
 - Export a Shopping List as text (such as Markdown) and share it, for example to a Telegram chat or another messenger.
+- Paste a list of Items copied from anywhere, in any format, and have them recognized (possibly with AI) and added to the Shopping List ([#37](https://github.com/pupsk86/tg-shopping-list/issues/37)).
